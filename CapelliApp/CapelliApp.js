@@ -8,10 +8,14 @@ import {
   Pressable,
   Image,
   FlatList,
+  Dimensions,
 } from 'react-native';
 import Constants from 'expo-constants';
 import lines from './assets/lines.png';
 import capelliLogo from './assets/capellibeauty.png';
+import banners from './assets/Banners.png';
+
+var { height, width } = Dimensions.get('window');
 
 export default function App() {
   const [buttonView, buttonChange] = useState(false); // Checking if three-lined button is pressed
@@ -41,16 +45,17 @@ export default function App() {
       {/*View for all components on home page*/}
       <View style={styles.allViews}>
         {/*View for pop-up button list*/}
-        <View style={buttonView ? styles.buttonListOpen : styles.buttonListClosed}>
+        <View
+          style={buttonView ? styles.buttonListOpen : styles.buttonListClosed}>
           {buttonView ? (
-              <FlatList // FlatList for list of buttons to select from
-                data={[
-                  { label: 'Featured Products' },
-                  { label: 'New Additions' },
-                  { label: 'Brands' },
-                ]}
-                renderItem={renderItem}
-              />
+            <FlatList // FlatList for list of buttons to select from
+              data={[
+                { label: 'Featured Products' },
+                { label: 'New Additions' },
+                { label: 'Brands' },
+              ]}
+              renderItem={renderItem}
+            />
           ) : null}
         </View>
         {/*View for main home page without button-list: just the title and body of homepage*/}
@@ -67,7 +72,9 @@ export default function App() {
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
           </View>
           {/*View for body flexbox*/}
-          <View style={styles.body}></View>
+          <View style={styles.body}>
+            <Image source={banners} style={styles.banners} />
+          </View>
         </View>
       </View>
     </>
@@ -79,9 +86,9 @@ const styles = StyleSheet.create({
   allViews: {
     flexDirection: 'row',
     borderWidth: 2,
-    borderColor: "yellow",
-    height:"100%",
-    width:"100%"
+    borderColor: 'yellow',
+    height: height,
+    width: width,
   },
   buttonListClosed: {
     flexDirection: 'column',
@@ -91,31 +98,36 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     flex: 2,
     borderWidth: 2,
-    borderColor: "black",
-    marginTop: '10%',
+    borderColor: 'black',
+    marginTop: height * 0.04,
   },
   titleBody: {
     flexDirection: 'column',
     flex: 3,
     borderWidth: 1,
-    borderColor: "blue"
+    borderColor: 'blue',
   },
   title: {
     flexDirection: 'row',
-    flex: 1,
+    flex: 0.75,
     borderWidth: 1,
-    borderColor: "green"
+    borderColor: 'green',
   },
   body: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     flex: 3,
     borderWidth: 1,
-    borderColor: "red"
+    borderColor: 'red',
+  },
+  banners: {
+    width: '100%',
+    height: '45%',
+    resizeMode: 'stretch',
   },
   listButton: {
     borderWidth: 1,
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: height * 0.075,
     justifyContent: 'center',
   },
   listButtonText: {
@@ -124,10 +136,10 @@ const styles = StyleSheet.create({
   },
   openListButton: {
     borderWidth: 1,
-    width: 30,
-    height: 35,
-    marginTop: 25,
-    marginLeft: 17,
+    width: width * 0.08,
+    height: height * 0.05,
+    marginTop: height * 0.04,
+    marginLeft: width * 0.05,
   },
   openListButtonImage: {
     resizeMode: 'stretch',
@@ -136,9 +148,9 @@ const styles = StyleSheet.create({
   },
   capelliLogoImage: {
     resizeMode: 'stretch',
-    marginTop: '9%',
-    marginLeft: '20%',
-    width: 120,
-    height: 100,
+    marginLeft: width * 0.22,
+    marginTop: height * 0.035,
+    width: width * 0.3,
+    height: height * 0.135,
   },
 });
