@@ -13,7 +13,8 @@ import {
 import Constants from 'expo-constants';
 import lines from './assets/lines.png';
 import capelliLogo from './assets/capellibeauty.png';
-import banners from './assets/Banners.png';
+import banner from './assets/Banners.png';
+import product from './assets/product.png';
 
 var { height, width } = Dimensions.get('window');
 
@@ -21,24 +22,52 @@ export default function App() {
   const [buttonView, buttonChange] = useState(false); // Checking if three-lined button is pressed
   const [textSay, textChange] = useState(''); // Text state variable
 
-  const renderItem = (
-    { item } // Buttons for FlatList rendering
-  ) => (
-    <Pressable
-      onPress={() => {
-        {
-          if (textSay != item.label) {
-            // Changes the textSay variable based on which button is pressed
-            textChange(item.label);
-          } else {
-            textChange('');
+  function buttonsList(label) { // Function for rendering buttons for button list on side of screen
+    return (
+      <Pressable
+        onPress={() => {
+          {
+            if (textSay != label) {
+              // Changes the textSay variable based on which button is pressed
+              textChange(label);
+            } else {
+              textChange('');
+            }
           }
-        }
-      }}
-      style={styles.listButton}>
-      <Text style={styles.listButtonText}> {item.label} </Text>
-    </Pressable>
-  );
+        }}
+        style={styles.listButton}>
+        <Text style={styles.listButtonText}> {label} </Text>
+      </Pressable>
+    );
+  }
+
+  const listOfButtons = (
+    { item } // Actual rendering of buttons by calling function
+  ) => buttonsList(item.label);
+
+  function homePageRender(label) {  // Function for rendering home page
+    if (label == 'banner') {  // Banner render
+      return (
+        <Image
+          style={buttonView ? styles.bannersOpen : styles.bannersClosed}
+          source={banner}
+        />
+      );
+    }
+    if (label == 'product1') {  // Products render
+      return (
+        <View style={styles.listing}>
+          <Image
+            style={buttonView ? styles.productOpen : styles.productClosed}
+            source={product}
+          />
+          <Text style={styles.productText}>This is a listing</Text>
+        </View>
+      );
+    }
+  }
+  {/*Actual rendering of home page by calling on function*/}
+  const homePage = ({ item }) => homePageRender(item.label);
 
   return (
     <>
@@ -54,7 +83,7 @@ export default function App() {
                 { label: 'New Additions' },
                 { label: 'Brands' },
               ]}
-              renderItem={renderItem}
+              renderItem={listOfButtons}
             />
           ) : null}
         </View>
@@ -73,7 +102,15 @@ export default function App() {
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
-            <Image source={banners} style={styles.banners} />
+            <FlatList
+              style={styles.homePageFlatList}
+              data={[
+                { label: 'banner' },
+                { label: 'product1' },
+                { label: 'product2' },
+              ]}
+              renderItem={homePage}
+            />
           </View>
         </View>
       </View>
@@ -119,10 +156,40 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'red',
   },
-  banners: {
+  bannersOpen: {
+    flex: 1,
     width: '100%',
-    height: '45%',
+    height: 275,
+    resizeMode: 'cover',
+  },
+  bannersClosed: {
+    width: '100%',
+    height: 275,
     resizeMode: 'stretch',
+  },
+  productOpen: {
+    width: '50%',
+    height: 190,
+    resizeMode: 'cover',
+  },
+  productClosed: {
+    width: '50%',
+    height: 190,
+    resizeMode: 'stretch',
+  },
+  productText: {
+    flex: 1,
+  },
+  listing: {
+    flexDirection: 'row',
+    width: '100%',
+    height: 200,
+    borderWidth: 1,
+    flexWrap: 'wrap',
+  },
+  homePageFlatList: {
+    width: '100%',
+    height: '100%',
   },
   listButton: {
     borderWidth: 1,
@@ -148,7 +215,7 @@ const styles = StyleSheet.create({
   },
   capelliLogoImage: {
     resizeMode: 'stretch',
-    marginLeft: width * 0.22,
+    marginLeft: width * 0.21,
     marginTop: height * 0.035,
     width: width * 0.3,
     height: height * 0.135,
