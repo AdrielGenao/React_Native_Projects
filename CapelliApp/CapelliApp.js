@@ -186,8 +186,8 @@ function Categories({ navigation, route }) {
               <Image
                 style={
                   navigationView
-                    ? styles.productImageOpen
-                    : styles.productImageClosed
+                    ? styles.productListingImageOpen
+                    : styles.productListingImageClosed
                 }
                 source={image}
               />
@@ -210,7 +210,7 @@ function Categories({ navigation, route }) {
     }
   }
   {
-    /*Actual rendering of home page by calling on function*/
+    /*Actual rendering of home page listings by calling on function*/
   }
   const listingsRender = ({ item }) =>
     listings(item.type, item.title, item.image, item.category);
@@ -307,8 +307,8 @@ function HomePage({ navigation }) {
               <Image
                 style={
                   navigationView
-                    ? styles.productImageOpen
-                    : styles.productImageClosed
+                    ? styles.productListingImageOpen
+                    : styles.productListingImageClosed
                 }
                 source={image}
               />
@@ -331,7 +331,7 @@ function HomePage({ navigation }) {
     }
   }
   {
-    /*Actual rendering of home page by calling on function*/
+    /*Actual rendering of home page listings by calling on function*/
   }
   const bodyPageRender = ({ item }) =>
     bodyPage(item.type, item.title, item.image);
@@ -396,8 +396,6 @@ const styles = StyleSheet.create({
   // All View FlexBox
   allViews: {
     flexDirection: 'row',
-    borderWidth: 2,
-    borderColor: 'yellow',
     height: height,
     width: width,
   },
@@ -405,16 +403,15 @@ const styles = StyleSheet.create({
   navigationListContainer: {
     flexDirection: 'column',
     flex: 2,
+    marginTop: height * 0.05,
     borderWidth: 2,
-    borderColor: 'black',
-    marginTop: height * 0.04,
   },
   // Style for each of the navigation buttons
   navigationButton: {
-    borderWidth: 1,
     width: '100%',
     height: height * 0.075,
     justifyContent: 'center',
+    borderWidth: 2,
   },
   // Style for the text of the navigation button
   navigationButtonText: {
@@ -425,22 +422,17 @@ const styles = StyleSheet.create({
   homePage: {
     flexDirection: 'column',
     flex: 3,
-    borderWidth: 1,
-    borderColor: 'blue',
   },
   // Title flexbox container (Logo and button for list)
   titleContainer: {
     flexDirection: 'row',
     flex: 0.75,
-    borderWidth: 1,
-    borderColor: 'green',
   },
   // Controls location and size of the navigation-opening button (the pressable)
   openNavigationButton: {
-    borderWidth: 1,
-    width: width * 0.08,
+    width: width * 0.095,
     height: height * 0.05,
-    marginTop: height * 0.04,
+    marginTop: height * 0.05,
     marginLeft: width * 0.05,
   },
   // Style for Image of button to show the list of navigation buttons
@@ -453,7 +445,7 @@ const styles = StyleSheet.create({
   capelliLogoImage: {
     resizeMode: 'stretch',
     marginLeft: width * 0.18,
-    marginTop: height * 0.035,
+    marginTop: height * 0.04,
     width: width * 0.37,
     height: height * 0.135,
   },
@@ -461,8 +453,6 @@ const styles = StyleSheet.create({
   body: {
     flexDirection: 'column',
     flex: 3,
-    borderWidth: 1,
-    borderColor: 'red',
   },
   // Style for banners when list button is pressed (Will cover image to appear pushed)
   bannersOpen: {
@@ -482,19 +472,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     height: height * 0.21,
-    borderWidth: 1,
+    borderWidth: 2,
+    borderRadius: 12.5,
   },
   // Style for the image of the product listing when navigation list is opened (changes image to be nonflex)
-  productImageOpen: {
+  productListingImageOpen: {
     width: width * 0.42,
     height: '100%',
     resizeMode: 'stretch',
+    borderRadius: 25,
   },
   // Style for the image of the product listing when navigation list is closed
-  productImageClosed: {
+  productListingImageClosed: {
     flex: 0.75,
     height: '100%',
     resizeMode: 'stretch',
+    borderRadius: 25,
   },
   // Style for the text of the product listing when navigation list is open (changes text to be nonflex)
   productTextOpen: {
@@ -514,8 +507,6 @@ const styles = StyleSheet.create({
   categoriesTitleContainer: {
     flexDirection: 'row',
     flex: 0.5,
-    borderWidth: 1,
-    borderColor: 'green',
   },
   //Title text style for Categories page
   categoriesTitleText: {
@@ -528,16 +519,14 @@ const styles = StyleSheet.create({
   productTitleContainer: {
     flexDirection: 'row',
     flex: 0.5,
-    borderWidth: 1,
-    borderColor: 'green',
   },
   //Title text style for Product page
   productTitleText: {
     fontSize: 20,
     fontWeight: 'bold',
     alignSelf: 'center',
-    marginLeft: width * 0.1,
-    maxWidth: 200,
+    marginLeft: width * 0.06,
+    maxWidth: width * 0.85,
     textAlign: 'center',
   },
   // Style for the image of the product page when navigation list is opened (changes image to be nonflex)
@@ -545,11 +534,13 @@ const styles = StyleSheet.create({
     width: width,
     height: '60%',
     resizeMode: 'cover',
+    borderRadius: 20,
   },
   // Style for the image of the product page when navigation list is closed
   productPageImageClosed: {
     width: width,
     height: '60%',
     resizeMode: 'stretch',
+    borderRadius: 20,
   },
 });
