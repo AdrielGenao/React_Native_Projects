@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -9,6 +9,7 @@ import {
   Image,
   FlatList,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -24,6 +25,16 @@ import product5 from './assets/product5.png';
 
 var { height, width } = Dimensions.get('window'); // Device dimensions
 
+async function getProducts(loadingChanger, productsChanger) {
+  // Function to call to get product data (takes setState functions as parameters)
+  try {
+    const response = await fetch('https://adrieltesting.pythonanywhere.com/');
+    const json = await response.json();
+    productsChanger(json.products);  // Changes state variable to hold requested products
+  } finally {
+    loadingChanger(false);  // Changes loading state to false
+  }
+}
 //All Product data for the app
 var DATA = [
   { type: 'banner', image: banner },
@@ -261,6 +272,22 @@ function Categories({ navigation, route }) {
 // Home Page Function for App
 function HomePage({ navigation }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
+  const [loading, loadingChange] = useState(true); // State for checking if products have loaded into products State variable
+  const [products, productsChange] = useState([]); // State for keeping array of products in pages
+  useEffect(() => { // useEffect used to only call getProducts function once: when page is rendered
+  getProducts(loadingChange, productsChange); // Called to get products from database, and saves it to products State variable
+    }, []);
+  var productData = [];  // Array to hold product data when get request is complete
+  if (!loading) {
+    // Method for putting database products into an array of dictionaries (if statement makes sure it loads only after get request is complete)
+    var productRow = {};
+    for (let i = 0; i < products.length; i++) {
+      productRow['type'] = products[i][0];
+      productRow['title'] = products[i][1];
+      productRow['category'] = products[i][2];
+      productData.push(productRow);
+    }
+  }
 
   function navigationButton(label) {
     // Function for rendering buttons for navigation list
