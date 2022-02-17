@@ -14,64 +14,46 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Constants from 'expo-constants';
-import lines from './assets/lines.png';
-import capelliLogo from './assets/capellibeauty.png';
 import banner from './assets/Banners.png';
-import product1 from './assets/product1.png';
-import product2 from './assets/product2.png';
-import product3 from './assets/product3.png';
-import product4 from './assets/product4.png';
-import product5 from './assets/product5.png';
 
+var lines = 'https://i.imgur.com/vz7qACB.png';
+var capelliLogo = 'https://i.imgur.com/iKZYLTP.png';
 var { height, width } = Dimensions.get('window'); // Device dimensions
 
 async function getProducts(loadingChanger, productsChanger) {
   // Function to call to get product data (takes setState functions as parameters)
   try {
-    const response = await fetch('https://adrieltesting.pythonanywhere.com/');
+    const response = await fetch('https://adrielcapelli.pythonanywhere.com/');
     const json = await response.json();
-    productsChanger(json.products);  // Changes state variable to hold requested products
+    productsChanger(json.products); // Changes state variable to hold requested products
   } finally {
-    loadingChanger(false);  // Changes loading state to false
+    loadingChanger(false); // Changes loading state to false
   }
 }
-//All Product data for the app
-var DATA = [
-  { type: 'banner', image: banner },
-  {
-    type: 'product', //Differentiate between product and banner
-    title: 'BaBylissPRO GoldFX Clipper', // Title for listings
-    image: product1, // Image
-    category: ['Clippers'], // Category the product is in
-  },
-  {
-    type: 'product',
-    title: 'BaBylissPRO SilverFX Clipper',
-    image: product2,
-    category: ['Clippers'],
-  },
-  {
-    type: 'product',
-    title: 'BaBylissPRO BlackFX Combo: Clipper, Trimmer, and Shaver',
-    image: product3,
-    category: ['Clippers', 'Trimmers', 'Shavers'],
-  },
-  {
-    type: 'product',
-    title: 'BaBylissPRO FX3 Shaver',
-    image: product4,
-    category: ['Shavers'],
-  },
-  {
-    type: 'product',
-    title: 'BaBylissPRO RoseGoldFX Trimmer',
-    image: product5,
-    category: ['Trimmers'],
-  },
-];
 
 function ProductPage({ navigation, route }) {
   //Product page
+  const [loading, loadingChange] = useState(true); // State for checking if products have loaded into products State variable
+  const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
+  const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn) The creating of this state is shown below
+
+  useEffect(() => {
+    // useEffect used to only call getProducts function once: when page is rendered
+    getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
+  }, []);
+  if (!loading) {
+    // Method for putting database products into an array of dictionaries (if statement makes sure it loads only after get request is complete)
+    for (var i = 0; i < productsReturn.length; i++) {
+      var productRow = {};
+      productRow['type'] = productsReturn[i][0];
+      productRow['title'] = productsReturn[i][1];
+      productRow['image'] = productsReturn[i][2];
+      productRow['category'] = productsReturn[i][3];
+      productsArray.push(productRow);
+    }
+    loadingChange(true);
+  }
+
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
   function navigationButton(label) {
     // Function for rendering buttons for navigation list
@@ -127,7 +109,10 @@ function ProductPage({ navigation, route }) {
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
-              <Image source={lines} style={styles.openNavigationButtonImage} />
+              <Image
+                source={{ uri: lines }}
+                style={styles.openNavigationButtonImage}
+              />
             </Pressable>
             {/*Title text for Categirues page */}
             <Text style={styles.productTitleText}>{route.params.title}</Text>
@@ -141,7 +126,7 @@ function ProductPage({ navigation, route }) {
                   ? styles.productPageImageOpen
                   : styles.productPageImageClosed
               }
-              source={route.params.image}
+              source={{uri:route.params.image}}
             />
           </View>
         </View>
@@ -153,6 +138,27 @@ function ProductPage({ navigation, route }) {
 function Categories({ navigation, route }) {
   //Categories page
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
+  const [loading, loadingChange] = useState(true); // State for checking if products have loaded into products State variable
+  const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
+  const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
+
+  useEffect(() => {
+    // useEffect used to only call getProducts function once: when page is rendered
+    getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
+  }, []);
+  if (!loading) {
+    // Method for putting database products into an array of dictionaries (if statement makes sure it loads only after get request is complete)
+    for (var i = 0; i < productsReturn.length; i++) {
+      var productRow = {};
+      productRow['type'] = productsReturn[i][0];
+      productRow['title'] = productsReturn[i][1];
+      productRow['image'] = productsReturn[i][2];
+      productRow['category'] = productsReturn[i][3];
+      productsArray.push(productRow);
+    }
+    loadingChange(true);
+  }
+
   function navigationButton(label) {
     // Function for rendering buttons for navigation list
     if (label == 'Home') {
@@ -200,7 +206,7 @@ function Categories({ navigation, route }) {
                     ? styles.productListingImageOpen
                     : styles.productListingImageClosed
                 }
-                source={image}
+                source={{uri: image}}
               />
               {/*View for text of listing based on if list of buttons is opened or closed*/}
               <View
@@ -253,7 +259,10 @@ function Categories({ navigation, route }) {
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
-              <Image source={lines} style={styles.openNavigationButtonImage} />
+              <Image
+                source={{ uri: lines }}
+                style={styles.openNavigationButtonImage}
+              />
             </Pressable>
             {/*Title text for Categirues page */}
             <Text style={styles.categoriesTitleText}>{route.params.title}</Text>
@@ -261,7 +270,7 @@ function Categories({ navigation, route }) {
           {/*View for body flexbox*/}
           <View style={styles.body}>
             {/*FlatList of product listings*/}
-            <FlatList data={DATA} renderItem={listingsRender} />
+            <FlatList data={productsArray} renderItem={listingsRender} />
           </View>
         </View>
       </View>
@@ -273,20 +282,24 @@ function Categories({ navigation, route }) {
 function HomePage({ navigation }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
   const [loading, loadingChange] = useState(true); // State for checking if products have loaded into products State variable
-  const [products, productsChange] = useState([]); // State for keeping array of products in pages
-  useEffect(() => { // useEffect used to only call getProducts function once: when page is rendered
-  getProducts(loadingChange, productsChange); // Called to get products from database, and saves it to products State variable
-    }, []);
-  var productData = [];  // Array to hold product data when get request is complete
+  const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
+  const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
+
+  useEffect(() => {
+    // useEffect used to only call getProducts function once: when page is rendered
+    getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
+  }, []);
   if (!loading) {
     // Method for putting database products into an array of dictionaries (if statement makes sure it loads only after get request is complete)
-    var productRow = {};
-    for (let i = 0; i < products.length; i++) {
-      productRow['type'] = products[i][0];
-      productRow['title'] = products[i][1];
-      productRow['category'] = products[i][2];
-      productData.push(productRow);
+    for (var i = 0; i < productsReturn.length; i++) {
+      var productRow = {};
+      productRow['type'] = productsReturn[i][0];
+      productRow['title'] = productsReturn[i][1];
+      productRow['image'] = productsReturn[i][2];
+      productRow['category'] = productsReturn[i][3];
+      productsArray.push(productRow);
     }
+    loadingChange(true);
   }
 
   function navigationButton(label) {
@@ -337,7 +350,7 @@ function HomePage({ navigation }) {
                     ? styles.productListingImageOpen
                     : styles.productListingImageClosed
                 }
-                source={image}
+                source={{ uri: image }}
               />
               {/*View for text of listing based on if list of buttons is opened or closed*/}
               <View
@@ -389,14 +402,20 @@ function HomePage({ navigation }) {
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
-              <Image source={lines} style={styles.openNavigationButtonImage} />
+              <Image
+                source={{ uri: lines }}
+                style={styles.openNavigationButtonImage}
+              />
             </Pressable>
-            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            <Image
+              source={{ uri: capelliLogo }}
+              style={styles.capelliLogoImage}
+            />
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
             {/*FlatList of banner and product listings*/}
-            <FlatList data={DATA} renderItem={bodyPageRender} />
+            <FlatList data={productsArray} renderItem={bodyPageRender} />
           </View>
         </View>
       </View>
