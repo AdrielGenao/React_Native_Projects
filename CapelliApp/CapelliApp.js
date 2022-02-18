@@ -13,11 +13,10 @@ import {
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Constants from 'expo-constants';
-import banner from './assets/Banners.png';
 
-var lines = 'https://i.imgur.com/vz7qACB.png';
-var capelliLogo = 'https://i.imgur.com/iKZYLTP.png';
+var banner = 'https://i.imgur.com/Ysr5EP8.jpg';
+var lines = 'https://i.imgur.com/vz7qACB.png'; // Lines image
+var capelliLogo = 'https://i.imgur.com/iKZYLTP.png'; // Capelli logo
 var { height, width } = Dimensions.get('window'); // Device dimensions
 
 async function getProducts(loadingChanger, productsChanger) {
@@ -33,27 +32,6 @@ async function getProducts(loadingChanger, productsChanger) {
 
 function ProductPage({ navigation, route }) {
   //Product page
-  const [loading, loadingChange] = useState(true); // State for checking if products have loaded into products State variable
-  const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
-  const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn) The creating of this state is shown below
-
-  useEffect(() => {
-    // useEffect used to only call getProducts function once: when page is rendered
-    getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
-  }, []);
-  if (!loading) {
-    // Method for putting database products into an array of dictionaries (if statement makes sure it loads only after get request is complete)
-    for (var i = 0; i < productsReturn.length; i++) {
-      var productRow = {};
-      productRow['type'] = productsReturn[i][0];
-      productRow['title'] = productsReturn[i][1];
-      productRow['image'] = productsReturn[i][2];
-      productRow['category'] = productsReturn[i][3];
-      productsArray.push(productRow);
-    }
-    loadingChange(true);
-  }
-
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
   function navigationButton(label) {
     // Function for rendering buttons for navigation list
@@ -77,62 +55,102 @@ function ProductPage({ navigation, route }) {
       );
     }
   }
-
   const navigationButtonRender = (
     { item } // Actual rendering of navigation buttons by calling function
   ) => navigationButton(item.label);
-
-  return (
-    <>
-      {/*View for all components on home page*/}
-      <View style={styles.allViews}>
-        {/*View for pop-up button list*/}
-        <View style={navigationView ? styles.navigationListContainer : null}>
-          {navigationView ? (
-            <FlatList // FlatList for list of buttons to select from
-              data={[
-                { label: 'Home' },
-                { label: 'Clippers' },
-                { label: 'Trimmers' },
-                { label: 'Shavers' },
-              ]}
-              renderItem={navigationButtonRender}
-            />
-          ) : null}
-        </View>
-        {/*Container for Categories page*/}
-        <View style={styles.homePage}>
-          {/*View for title flexbox*/}
-          <View style={styles.productTitleContainer}>
-            <Pressable
-              onPress={() => {
-                navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
-              }}
-              style={styles.openNavigationButton}>
+  //If navigation list is closed
+  if (!navigationView) {
+    return (
+      <>
+        {/*View for all components on home page*/}
+        <View style={styles.allViewsClosed}>
+          {/*Container for Product page*/}
+          <View style={styles.homePage}>
+            {/*View for title flexbox*/}
+            <View style={styles.productTitleContainer}>
+              <Pressable
+                onPress={() => {
+                  navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                }}
+                style={styles.openNavigationButton}>
+                <Image
+                  source={{ uri: lines }}
+                  style={styles.openNavigationButtonImage}
+                />
+              </Pressable>
+              {/*Title text for Product page */}
+            </View>
+            {/*View for body flexbox*/}
+            <View style={styles.body}>
+              {/* Image of the product */}
               <Image
-                source={{ uri: lines }}
-                style={styles.openNavigationButtonImage}
+                style={styles.productPageImage}
+                source={{ uri: route.params.image }}
               />
-            </Pressable>
-            {/*Title text for Categirues page */}
-            <Text style={styles.productTitleText}>{route.params.title}</Text>
-          </View>
-          {/*View for body flexbox*/}
-          <View style={styles.body}>
-            {/* Image of the product */}
-            <Image
-              style={
-                navigationView
-                  ? styles.productPageImageOpen
-                  : styles.productPageImageClosed
-              }
-              source={{uri:route.params.image}}
-            />
+              <Text style={styles.productTitleText}>{route.params.title}</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </>
-  );
+      </>
+    );
+  }
+  //If navigation list is open
+  if (navigationView) {
+    return (
+      <>
+        {/*View for pop-up button list*/}
+        <View style={styles.navigationListContainer}>
+          <FlatList // FlatList for list of buttons to select from
+            data={[
+              { label: 'Home' },
+              { label: 'Clippers' },
+              { label: 'Trimmers' },
+              { label: 'Shavers' },
+            ]}
+            renderItem={navigationButtonRender}
+          />
+        </View>
+        {/*View for all components on home page*/}
+        <View opacity={0.25} style={styles.allViewsOpen}>
+          {/*Pressable that acts as a "canceler" to go back to non-navigation-list home page */}
+          <Pressable
+            onPress={() => {
+              navigationChange(!navigationView);
+            }}
+            style={{ width: width, height: height }}>
+            {/*Container for Product page*/}
+            <View style={styles.homePage}>
+              {/*View for title flexbox*/}
+              <View style={styles.productTitleContainer}>
+                <Pressable
+                  onPress={() => {
+                    navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                  }}
+                  style={styles.openNavigationButton}>
+                  <Image
+                    source={{ uri: lines }}
+                    style={styles.openNavigationButtonImage}
+                  />
+                </Pressable>
+                {/*Title text for Product page */}
+              </View>
+              {/*View for body flexbox*/}
+              <View style={styles.body}>
+                {/* Image of the product */}
+                <Image
+                  style={styles.productPageImage}
+                  source={{ uri: route.params.image }}
+                />
+                <Text style={styles.productTitleText}>
+                  {route.params.title}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        </View>
+      </>
+    );
+  }
 }
 
 function Categories({ navigation, route }) {
@@ -156,6 +174,7 @@ function Categories({ navigation, route }) {
       productRow['category'] = productsReturn[i][3];
       productsArray.push(productRow);
     }
+
     loadingChange(true);
   }
 
@@ -201,20 +220,11 @@ function Categories({ navigation, route }) {
             <View style={styles.listing}>
               {/*Image for listing*/}
               <Image
-                style={
-                  navigationView
-                    ? styles.productListingImageOpen
-                    : styles.productListingImageClosed
-                }
-                source={{uri: image}}
+                style={styles.productListingImage}
+                source={{ uri: image }}
               />
               {/*View for text of listing based on if list of buttons is opened or closed*/}
-              <View
-                style={
-                  navigationView
-                    ? styles.productTextOpen
-                    : styles.productTextClosed
-                }>
+              <View style={styles.productText}>
                 {/*Actual text*/}
                 <Text style={styles.productTextTitle}>{title}</Text>
               </View>
@@ -231,51 +241,95 @@ function Categories({ navigation, route }) {
   }
   const listingsRender = ({ item }) =>
     listings(item.type, item.title, item.image, item.category);
-
-  return (
-    <>
-      {/*View for all components on home page*/}
-      <View style={styles.allViews}>
+  //If navigation list is closed
+  if (!navigationView) {
+    return (
+      <>
+        {/*View for all components on home page*/}
+        <View style={styles.allViewsClosed}>
+          {/*Container for Categories page*/}
+          <View style={styles.homePage}>
+            {/*View for title flexbox*/}
+            <View style={styles.categoriesTitleContainer}>
+              <Pressable
+                onPress={() => {
+                  navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                }}
+                style={styles.openNavigationButton}>
+                <Image
+                  source={{ uri: lines }}
+                  style={styles.openNavigationButtonImage}
+                />
+              </Pressable>
+              {/*Title text for Categories page */}
+              <Text style={styles.categoriesTitleTextClosed}>
+                {route.params.title}
+              </Text>
+            </View>
+            {/*View for body flexbox*/}
+            <View style={styles.body}>
+              {/*FlatList of product listings*/}
+              <FlatList data={productsArray} renderItem={listingsRender} />
+            </View>
+          </View>
+        </View>
+      </>
+    );
+  }
+  //if navigation list is closed
+  if (navigationView) {
+    return (
+      <>
         {/*View for pop-up button list*/}
-        <View style={navigationView ? styles.navigationListContainer : null}>
-          {navigationView ? (
-            <FlatList // FlatList for list of buttons to select from
-              data={[
-                { label: 'Home' },
-                { label: 'Clippers' },
-                { label: 'Trimmers' },
-                { label: 'Shavers' },
-              ]}
-              renderItem={navigationButtonRender}
-            />
-          ) : null}
+        <View style={styles.navigationListContainer}>
+          <FlatList // FlatList for list of buttons to select from
+            data={[
+              { label: 'Home' },
+              { label: 'Clippers' },
+              { label: 'Trimmers' },
+              { label: 'Shavers' },
+            ]}
+            renderItem={navigationButtonRender}
+          />
         </View>
-        {/*Container for Categories page*/}
-        <View style={styles.homePage}>
-          {/*View for title flexbox*/}
-          <View style={styles.categoriesTitleContainer}>
-            <Pressable
-              onPress={() => {
-                navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
-              }}
-              style={styles.openNavigationButton}>
-              <Image
-                source={{ uri: lines }}
-                style={styles.openNavigationButtonImage}
-              />
-            </Pressable>
-            {/*Title text for Categirues page */}
-            <Text style={styles.categoriesTitleText}>{route.params.title}</Text>
-          </View>
-          {/*View for body flexbox*/}
-          <View style={styles.body}>
-            {/*FlatList of product listings*/}
-            <FlatList data={productsArray} renderItem={listingsRender} />
-          </View>
+        {/*View for all components on home page*/}
+        <View opacity={0.25} style={styles.allViewsOpen}>
+          {/*Pressable that acts as a "canceler" to go back to non-navigation-list home page */}
+          <Pressable
+            onPress={() => {
+              navigationChange(!navigationView);
+            }}
+            style={{ width: width, height: height }}>
+            {/*Container for Categories page*/}
+            <View style={styles.homePage}>
+              {/*View for title flexbox*/}
+              <View style={styles.categoriesTitleContainer}>
+                <Pressable
+                  onPress={() => {
+                    navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                  }}
+                  style={styles.openNavigationButton}>
+                  <Image
+                    source={{ uri: lines }}
+                    style={styles.openNavigationButtonImage}
+                  />
+                </Pressable>
+                {/*Title text for Categories page */}
+                <Text style={styles.categoriesTitleTextClosed}>
+                  {route.params.title}
+                </Text>
+              </View>
+              {/*View for body flexbox*/}
+              <View style={styles.body} pointerEvents="none">
+                {/*FlatList of product listings*/}
+                <FlatList data={productsArray} renderItem={listingsRender} />
+              </View>
+            </View>
+          </Pressable>
         </View>
-      </View>
-    </>
-  );
+      </>
+    );
+  }
 }
 
 // Home Page Function for App
@@ -299,6 +353,12 @@ function HomePage({ navigation }) {
       productRow['category'] = productsReturn[i][3];
       productsArray.push(productRow);
     }
+    productsArray.splice(0, 0, {
+      // Banner addition to productsArray
+      type: 'banner',
+      title: 'banner1',
+      image: 'https://i.imgur.com/Ysr5EP8.jpg',
+    });
     loadingChange(true);
   }
 
@@ -323,10 +383,7 @@ function HomePage({ navigation }) {
       // Banner rendering
       return (
         <>
-          <Image
-            style={navigationView ? styles.bannersOpen : styles.bannersClosed}
-            source={image}
-          />
+          <Image style={styles.banners} source={{ uri: image }} />
           {/*View for creating a space between components of body page */}
           <View style={{ height: height * 0.01, width: '100%' }}></View>
         </>
@@ -345,20 +402,11 @@ function HomePage({ navigation }) {
             <View style={styles.listing}>
               {/*Image for listing*/}
               <Image
-                style={
-                  navigationView
-                    ? styles.productListingImageOpen
-                    : styles.productListingImageClosed
-                }
+                style={styles.productListingImage}
                 source={{ uri: image }}
               />
               {/*View for text of listing based on if list of buttons is opened or closed*/}
-              <View
-                style={
-                  navigationView
-                    ? styles.productTextOpen
-                    : styles.productTextClosed
-                }>
+              <View style={styles.productText}>
                 {/*Actual text*/}
                 <Text style={styles.productTextTitle}>{title}</Text>
               </View>
@@ -375,52 +423,94 @@ function HomePage({ navigation }) {
   }
   const bodyPageRender = ({ item }) =>
     bodyPage(item.type, item.title, item.image);
-
-  return (
-    <>
-      {/*View for all components on home page*/}
-      <View style={styles.allViews}>
-        {/*View for pop-up button list*/}
-        <View style={navigationView ? styles.navigationListContainer : null}>
-          {navigationView ? (
-            <FlatList // FlatList for list of buttons to select from
-              data={[
-                { label: 'Clippers' },
-                { label: 'Trimmers' },
-                { label: 'Shavers' },
-              ]}
-              renderItem={navigationButtonRender}
-            />
-          ) : null}
-        </View>
-        {/*Container for main home page*/}
-        <View style={styles.homePage}>
-          {/*View for title flexbox*/}
-          <View style={styles.titleContainer}>
-            <Pressable
-              onPress={() => {
-                navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
-              }}
-              style={styles.openNavigationButton}>
+  //If navigation list is closed
+  if (!navigationView) {
+    return (
+      <>
+        {/*View for all components on home page*/}
+        <View style={styles.allViewsClosed}>
+          {/*Container for main home page*/}
+          <View style={styles.homePage}>
+            {/*View for title flexbox*/}
+            <View style={styles.titleContainer}>
+              <Pressable
+                onPress={() => {
+                  navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                }}
+                style={styles.openNavigationButton}>
+                <Image
+                  source={{ uri: lines }}
+                  style={styles.openNavigationButtonImage}
+                />
+              </Pressable>
               <Image
-                source={{ uri: lines }}
-                style={styles.openNavigationButtonImage}
+                source={{ uri: capelliLogo }}
+                style={styles.capelliLogoImage}
               />
-            </Pressable>
-            <Image
-              source={{ uri: capelliLogo }}
-              style={styles.capelliLogoImage}
-            />
-          </View>
-          {/*View for body flexbox*/}
-          <View style={styles.body}>
-            {/*FlatList of banner and product listings*/}
-            <FlatList data={productsArray} renderItem={bodyPageRender} />
+            </View>
+            {/*View for body flexbox*/}
+            <View style={styles.body}>
+              {/*FlatList of banner and product listings*/}
+              <FlatList data={productsArray} renderItem={bodyPageRender} />
+            </View>
           </View>
         </View>
-      </View>
-    </>
-  );
+      </>
+    );
+  }
+  //If navigation list is open
+  if (navigationView) {
+    return (
+      <>
+        {/*View for pop-up button list*/}
+        <View style={styles.navigationListContainer}>
+          <FlatList // FlatList for list of buttons to select from
+            data={[
+              { label: 'Clippers' },
+              { label: 'Trimmers' },
+              { label: 'Shavers' },
+            ]}
+            renderItem={navigationButtonRender}
+          />
+        </View>
+        {/*View for all components on home page*/}
+        <View opacity={0.25} style={styles.allViewsOpen}>
+          {/*Pressable that acts as a "canceler" to go back to non-navigation-list home page */}
+          <Pressable
+            onPress={() => {
+              navigationChange(!navigationView);
+            }}
+            style={{ width: width, height: height }}>
+            {/*Container for main home page*/}
+            <View style={styles.homePage}>
+              {/*View for title flexbox*/}
+              <View style={styles.titleContainer}>
+                <Pressable
+                  onPress={() => {
+                    navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                  }}
+                  style={styles.openNavigationButton}>
+                  <Image
+                    source={{ uri: lines }}
+                    style={styles.openNavigationButtonImage}
+                  />
+                </Pressable>
+                <Image
+                  source={{ uri: capelliLogo }}
+                  style={styles.capelliLogoImage}
+                />
+              </View>
+              {/*View for body flexbox*/}
+              <View style={styles.body} pointerEvents="none">
+                {/*FlatList of banner and product listings*/}
+                <FlatList data={productsArray} renderItem={bodyPageRender} />
+              </View>
+            </View>
+          </Pressable>
+        </View>
+      </>
+    );
+  }
 }
 
 //Complete app that calls on different pages to render (React Navigation)
@@ -440,17 +530,26 @@ export default function App() {
 const styles = StyleSheet.create({
   // Styles for all components
   // All View FlexBox
-  allViews: {
+  allViewsClosed: {
     flexDirection: 'row',
     height: height,
     width: width,
   },
+  allViewsOpen: {
+    flexDirection: 'row',
+    height: height,
+    width: width,
+    position: 'absolute',
+  },
   // Style for List of Navigation Buttons
   navigationListContainer: {
     flexDirection: 'column',
-    flex: 2,
+    width: width * 0.4,
     marginTop: height * 0.05,
     borderWidth: 2,
+    position: 'absolute',
+    zIndex: 1,
+    backgroundColor: 'white',
   },
   // Style for each of the navigation buttons
   navigationButton: {
@@ -467,12 +566,13 @@ const styles = StyleSheet.create({
   // Main home page style for top logo, banner, and featured listings
   homePage: {
     flexDirection: 'column',
-    flex: 3,
+    flex: 1,
   },
   // Title flexbox container (Logo and button for list)
   titleContainer: {
     flexDirection: 'row',
     flex: 0.75,
+    width: '100%',
   },
   // Controls location and size of the navigation-opening button (the pressable)
   openNavigationButton: {
@@ -500,15 +600,9 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     flex: 3,
   },
-  // Style for banners when list button is pressed (Will cover image to appear pushed)
-  bannersOpen: {
+  // Style for banners
+  banners: {
     flex: 1,
-    width: '100%',
-    height: height * 0.4,
-    resizeMode: 'cover',
-  },
-  // Style for banners when list of buttons is closed
-  bannersClosed: {
     width: '100%',
     height: height * 0.4,
     resizeMode: 'stretch',
@@ -516,77 +610,59 @@ const styles = StyleSheet.create({
   // Container for a product listing
   listing: {
     flexDirection: 'row',
-    width: '100%',
+    width: width,
     height: height * 0.21,
     borderWidth: 2,
     borderRadius: 12.5,
   },
-  // Style for the image of the product listing when navigation list is opened (changes image to be nonflex)
-  productListingImageOpen: {
-    width: width * 0.42,
-    height: '100%',
-    resizeMode: 'stretch',
-    borderRadius: 25,
-  },
-  // Style for the image of the product listing when navigation list is closed
-  productListingImageClosed: {
+  // Style for the image of the product listing
+  productListingImage: {
     flex: 0.75,
     height: '100%',
     resizeMode: 'stretch',
     borderRadius: 25,
   },
-  // Style for the text of the product listing when navigation list is open (changes text to be nonflex)
-  productTextOpen: {
-    padding: 6,
-  },
-  // Style for the text of the product listing when navigation list is closed
-  productTextClosed: {
+  // Style for the text of the product listing
+  productText: {
     flex: 1,
     padding: 6,
   },
-  // Product title text style
+  // Product title text style for listing
   productTextTitle: {
     fontSize: 16,
     fontWeight: 'bold',
   },
   //Container for Title for Categories page
   categoriesTitleContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     flex: 0.5,
+    textAlign: 'center',
   },
   //Title text style for Categories page
-  categoriesTitleText: {
+  categoriesTitleTextClosed: {
     fontSize: 30,
     fontWeight: 'bold',
     alignSelf: 'center',
-    marginLeft: width * 0.195,
+    marginTop: height * -0.055,
   },
   //Container for Title for Product page
   productTitleContainer: {
     flexDirection: 'row',
     flex: 0.5,
+    alignContent: 'left',
   },
-  //Title text style for Product page
-  productTitleText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    alignSelf: 'center',
-    marginLeft: width * 0.06,
-    maxWidth: width * 0.85,
-    textAlign: 'center',
-  },
-  // Style for the image of the product page when navigation list is opened (changes image to be nonflex)
-  productPageImageOpen: {
-    width: width,
-    height: '60%',
-    resizeMode: 'cover',
-    borderRadius: 20,
-  },
-  // Style for the image of the product page when navigation list is closed
-  productPageImageClosed: {
+  // Style for the image of the product page
+  productPageImage: {
     width: width,
     height: '60%',
     resizeMode: 'stretch',
     borderRadius: 20,
+  },
+  //Title text style for Product page
+  productTitleText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginLeft: width * 0.03,
+    paddingTop: 5,
   },
 });
