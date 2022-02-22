@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -10,11 +10,13 @@ import {
   FlatList,
   Dimensions,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { CardStyleInterpolators } from '@react-navigation/stack';
 
-var banner = 'https://i.imgur.com/Ysr5EP8.jpg';  // Sample banner
+var banner = 'https://i.imgur.com/Ysr5EP8.jpg'; // Sample banner
 var lines = 'https://i.imgur.com/vz7qACB.png'; // Lines image
 var capelliLogo = 'https://i.imgur.com/iKZYLTP.png'; // Capelli logo
 var { height, width } = Dimensions.get('window'); // Device dimensions
@@ -45,8 +47,8 @@ function ProductPage({ navigation, route }) {
           <Text style={styles.navigationButtonText}> {label} </Text>
         </Pressable>
       );
-    } else if (label != 'Home' && route.params.title != label) {
-      // Button for Going to other Category page (Doesn't include the current page)
+    } else if (label != 'Home') {
+      // Button for Going to other Category page
       return (
         <Pressable
           onPress={() => navigation.replace('Categories', { title: label })}
@@ -61,29 +63,47 @@ function ProductPage({ navigation, route }) {
     { item } // Actual rendering of navigation buttons by calling function
   ) => navigationButton(item.label);
 
+  const navAnimation = useRef(new Animated.Value(-150)).current; // Animation for navigation list (uses its margin left value for appearance)
+
+  const enter = () => {
+    // Entering animation
+    Animated.timing(navAnimation, {
+      toValue: 0,
+      duration: 200,
+    }).start();
+  };
+
+  const exit = () => {
+    // Exiting animation
+    Animated.timing(navAnimation, {
+      toValue: -150,
+      duration: 200,
+    }).start();
+  };
+
   return (
     <>
-      {/*View for pop-up button list (if statement allows for opening and closing*/}
-      {navigationView ? (
-        <View style={styles.navigationListContainer}>
-          <FlatList // FlatList for list of buttons to select from
-            data={[
-              { label: 'Home' },
-              { label: 'Clippers' },
-              { label: 'Trimmers' },
-              { label: 'Shavers' },
-            ]}
-            renderItem={navigationButtonRender}
-          />
-        </View>
-      ) : null}
+      {/*Animated View for pop-up button list*/}
+      <Animated.View
+        style={[styles.navigationListContainer, { marginLeft: navAnimation }]}>
+        <FlatList // FlatList for list of buttons to select from
+          data={[
+            { label: 'Home' },
+            { label: 'Clippers' },
+            { label: 'Trimmers' },
+            { label: 'Shavers' },
+          ]}
+          renderItem={navigationButtonRender}
+        />
+      </Animated.View>
       {/*View for all components on home page*/}
       <View
         opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
         style={styles.allViews}>
         {navigationView ? (
-          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to closes navigation list
+          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to close navigation list, and starts the exit animation for the nav list
             onPress={() => {
+              exit();
               navigationChange(!navigationView);
             }}
             style={styles.allViewsPressable}
@@ -95,6 +115,7 @@ function ProductPage({ navigation, route }) {
           <View style={styles.productTitleContainer}>
             <Pressable
               onPress={() => {
+                enter(); // Start animation for nav list appearance
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
@@ -207,29 +228,48 @@ function Categories({ navigation, route }) {
   }
   const listingsRender = ({ item }) =>
     listings(item.type, item.title, item.image, item.category);
+
+  const navAnimation = useRef(new Animated.Value(-150)).current; // Animation for navigation list (uses its margin left value for appearance)
+
+  const enter = () => {
+    // Entering animation
+    Animated.timing(navAnimation, {
+      toValue: 0,
+      duration: 200,
+    }).start();
+  };
+
+  const exit = () => {
+    // Exiting animation
+    Animated.timing(navAnimation, {
+      toValue: -150,
+      duration: 200,
+    }).start();
+  };
+
   return (
     <>
-      {/*View for pop-up button list*/}
-      {navigationView ? (
-        <View style={styles.navigationListContainer}>
-          <FlatList // FlatList for list of buttons to select from
-            data={[
-              { label: 'Home' },
-              { label: 'Clippers' },
-              { label: 'Trimmers' },
-              { label: 'Shavers' },
-            ]}
-            renderItem={navigationButtonRender}
-          />
-        </View>
-      ) : null}
+      {/*Animated View for pop-up button list*/}
+      <Animated.View
+        style={[styles.navigationListContainer, { marginLeft: navAnimation }]}>
+        <FlatList // FlatList for list of buttons to select from
+          data={[
+            { label: 'Home' },
+            { label: 'Clippers' },
+            { label: 'Trimmers' },
+            { label: 'Shavers' },
+          ]}
+          renderItem={navigationButtonRender}
+        />
+      </Animated.View>
       {/*View for all components on categories page*/}
       <View
         opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
         style={styles.allViews}>
         {navigationView ? (
-          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to closes navigation list
+          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to close navigation list, and starts the exit animation for the nav list
             onPress={() => {
+              exit();
               navigationChange(!navigationView);
             }}
             style={styles.allViewsPressable}
@@ -242,6 +282,7 @@ function Categories({ navigation, route }) {
             <Pressable
               onPress={() => {
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                enter(); // Start animation for nav list appearance
               }}
               style={styles.openNavigationButton}>
               <Image
@@ -356,29 +397,47 @@ function HomePage({ navigation }) {
   }
   const bodyPageRender = ({ item }) =>
     bodyPage(item.type, item.title, item.image);
-  //If navigation list is closed
+
+  const navAnimation = useRef(new Animated.Value(-150)).current; // Animation for navigation list (uses its margin left value for appearance)
+
+  const enter = () => {
+    // Entering animation
+    Animated.timing(navAnimation, {
+      toValue: 0,
+      duration: 250,
+    }).start();
+  };
+
+  const exit = () => {
+    // Exiting animation
+    Animated.timing(navAnimation, {
+      toValue: -150,
+      duration: 250,
+    }).start();
+  };
+
   return (
     <>
-      {/*View for pop-up button list*/}
-      {navigationView ? (
-        <View style={styles.navigationListContainer}>
-          <FlatList // FlatList for list of buttons to select from
-            data={[
-              { label: 'Clippers' },
-              { label: 'Trimmers' },
-              { label: 'Shavers' },
-            ]}
-            renderItem={navigationButtonRender}
-          />
-        </View>
-      ) : null}
+      {/*Animated View for pop-up button list*/}
+      <Animated.View
+        style={[styles.navigationListContainer, { marginLeft: navAnimation }]}>
+        <FlatList // FlatList for list of buttons to select from
+          data={[
+            { label: 'Clippers' },
+            { label: 'Trimmers' },
+            { label: 'Shavers' },
+          ]}
+          renderItem={navigationButtonRender}
+        />
+      </Animated.View>
       {/*View for all components on home page*/}
       <View
         opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
         style={styles.allViews}>
         {navigationView ? (
-          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to closes navigation list
+          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to close navigation list, and starts the exit animation for the nav list
             onPress={() => {
+              exit();
               navigationChange(!navigationView);
             }}
             style={styles.allViewsPressable}
@@ -390,6 +449,7 @@ function HomePage({ navigation }) {
           <View style={styles.titleContainer}>
             <Pressable
               onPress={() => {
+                enter(); // Start animation for nav list appearance
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
@@ -419,7 +479,7 @@ export default function App() {
   const Stack = createNativeStackNavigator(); // Navigator Stack
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade"}}>
         <Stack.Screen name="Home" component={HomePage} />
         <Stack.Screen name="Categories" component={Categories} />
         <Stack.Screen name="ProductPage" component={ProductPage} />
