@@ -14,11 +14,11 @@ import {
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { CardStyleInterpolators } from '@react-navigation/stack';
 
 var banner = 'https://i.imgur.com/Ysr5EP8.jpg'; // Sample banner
 var lines = 'https://i.imgur.com/vz7qACB.png'; // Lines image
 var capelliLogo = 'https://i.imgur.com/iKZYLTP.png'; // Capelli logo
+var backArrow = 'https://i.imgur.com/5KqWPFy.png'; // Back button image
 var { height, width } = Dimensions.get('window'); // Device dimensions
 
 async function getProducts(loadingChanger, productsChanger) {
@@ -34,94 +34,22 @@ async function getProducts(loadingChanger, productsChanger) {
 
 function ProductPage({ navigation, route }) {
   //Product page
-  const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
-
-  function navigationButton(label) {
-    // Function for rendering buttons for navigation list
-    if (label == 'Home') {
-      // Button for going to home page
-      return (
-        <Pressable
-          onPress={() => navigation.replace('Home')}
-          style={styles.navigationButton}>
-          <Text style={styles.navigationButtonText}> {label} </Text>
-        </Pressable>
-      );
-    } else if (label != 'Home') {
-      // Button for Going to other Category page
-      return (
-        <Pressable
-          onPress={() => navigation.replace('Categories', { title: label })}
-          style={styles.navigationButton}>
-          <Text style={styles.navigationButtonText}> {label} </Text>
-        </Pressable>
-      );
-    }
-  }
-
-  const navigationButtonRender = (
-    { item } // Actual rendering of navigation buttons by calling function
-  ) => navigationButton(item.label);
-
-  const navAnimation = useRef(new Animated.Value(-150)).current; // Animation for navigation list (uses its margin left value for appearance)
-
-  const enter = () => {
-    // Entering animation
-    Animated.timing(navAnimation, {
-      toValue: 0,
-      duration: 200,
-    }).start();
-  };
-
-  const exit = () => {
-    // Exiting animation
-    Animated.timing(navAnimation, {
-      toValue: -150,
-      duration: 200,
-    }).start();
-  };
-
   return (
     <>
-      {/*Animated View for pop-up button list*/}
-      <Animated.View
-        style={[styles.navigationListContainer, { marginLeft: navAnimation }]}>
-        <FlatList // FlatList for list of buttons to select from
-          data={[
-            { label: 'Home' },
-            { label: 'Clippers' },
-            { label: 'Trimmers' },
-            { label: 'Shavers' },
-          ]}
-          renderItem={navigationButtonRender}
-        />
-      </Animated.View>
       {/*View for all components on home page*/}
-      <View
-        opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
-        style={styles.allViews}>
-        {navigationView ? (
-          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to close navigation list, and starts the exit animation for the nav list
-            onPress={() => {
-              exit();
-              navigationChange(!navigationView);
-            }}
-            style={styles.allViewsPressable}
-            opacity={1}></Pressable>
-        ) : null}
+      <View style={styles.allViews}>
         {/*Container for Product page*/}
         <View style={styles.homePage}>
           {/*View for title flexbox*/}
           <View style={styles.productTitleContainer}>
             <Pressable
               onPress={() => {
-                enter(); // Start animation for nav list appearance
-                navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
+                navigation.goBack();
               }}
-              style={styles.openNavigationButton}>
+              style={styles.backButton}>
               <Image
-                source={{ uri: lines }}
-                style={styles.openNavigationButtonImage}
+                source={{ uri: backArrow }}
+                style={styles.backButtonImage}
               />
             </Pressable>
             {/*Title text for Product page */}
@@ -170,21 +98,53 @@ function Categories({ navigation, route }) {
     if (label == 'Home') {
       // Button for going to home page
       return (
-        <Pressable
-          onPress={() => navigation.replace('Home')}
-          style={styles.navigationButton}>
-          <Text style={styles.navigationButtonText}> {label} </Text>
-        </Pressable>
+        <>
+          <Pressable
+            onPress={() => navigation.replace('Home')}
+            style={styles.navigationButton}>
+            <Text style={styles.navigationButtonText}> {label} </Text>
+          </Pressable>
+          {/* View that acts as a space separator - similar to that on the listings */}
+          <View style={{ height: height * 0.01 }}></View>
+        </>
       );
-    } else if (label != 'Home' && route.params.title != label) {
-      // Button for Going to other Category page (Doesn't include the current page)
-      return (
-        <Pressable
-          onPress={() => navigation.replace('Categories', { title: label })}
-          style={styles.navigationButton}>
-          <Text style={styles.navigationButtonText}> {label} </Text>
-        </Pressable>
-      );
+    } else if (label != 'Home') {
+      // Button for Going to other Category page
+      if (route.params.title == label) {
+        // If on current page - will just close the navigation list
+        return (
+          <>
+            <Pressable
+              onPress={() => {
+                exit();
+                navigationChange(!navigationView);
+              }}
+              style={[styles.navigationButton, { backgroundColor: '#CCFFFF' }]}>
+              <Text
+                style={[styles.navigationButtonText, { fontWeight: 'bold' }]}>
+                {' '}
+                {label}{' '}
+              </Text>
+            </Pressable>
+            {/* View that acts as a space separator - similar to that on the listings */}
+            <View style={{ height: height * 0.01 }}></View>
+          </>
+        );
+      }
+      if (route.params.title != label) {
+        // If not on current page - will go to selected category page
+        return (
+          <>
+            <Pressable
+              onPress={() => navigation.replace('Categories', { title: label })}
+              style={styles.navigationButton}>
+              <Text style={styles.navigationButtonText}> {label} </Text>
+            </Pressable>
+            {/* View that acts as a space separator - similar to that on the listings */}
+            <View style={{ height: height * 0.01 }}></View>
+          </>
+        );
+      }
     }
   }
 
@@ -201,7 +161,7 @@ function Categories({ navigation, route }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() =>
-              navigation.replace('ProductPage', { title: title, image: image })
+              navigation.navigate('ProductPage', { title: title, image: image })
             }>
             {/*Full Container of product listing*/}
             <View style={styles.listing}>
@@ -229,7 +189,7 @@ function Categories({ navigation, route }) {
   const listingsRender = ({ item }) =>
     listings(item.type, item.title, item.image, item.category);
 
-  const navAnimation = useRef(new Animated.Value(-150)).current; // Animation for navigation list (uses its margin left value for appearance)
+  const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
 
   const enter = () => {
     // Entering animation
@@ -242,7 +202,7 @@ function Categories({ navigation, route }) {
   const exit = () => {
     // Exiting animation
     Animated.timing(navAnimation, {
-      toValue: -150,
+      toValue: -175,
       duration: 200,
     }).start();
   };
@@ -252,6 +212,8 @@ function Categories({ navigation, route }) {
       {/*Animated View for pop-up button list*/}
       <Animated.View
         style={[styles.navigationListContainer, { marginLeft: navAnimation }]}>
+        {/* Space between top of phone and actual navigation list */}
+        <View style={{ height: height * 0.05 }}></View>
         <FlatList // FlatList for list of buttons to select from
           data={[
             { label: 'Home' },
@@ -291,9 +253,7 @@ function Categories({ navigation, route }) {
               />
             </Pressable>
             {/*Title text for Categories page */}
-            <Text style={styles.categoriesTitleTextClosed}>
-              {route.params.title}
-            </Text>
+            <Text style={styles.categoriesTitleText}>{route.params.title}</Text>
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
@@ -338,13 +298,35 @@ function HomePage({ navigation }) {
 
   function navigationButton(label) {
     // Function for rendering buttons for navigation list
-    return (
-      <Pressable
-        onPress={() => navigation.replace('Categories', { title: label })}
-        style={styles.navigationButton}>
-        <Text style={styles.navigationButtonText}> {label} </Text>
-      </Pressable>
-    );
+    if (label == 'Home') {
+      // Button for going to home page (is highlighted to show that user is currently on home page)
+      return (
+        <>
+          <Pressable
+            onPress={() => (exit(), navigationChange(!navigationView))}
+            style={[styles.navigationButton, { backgroundColor: '#CCFFFF' }]}>
+            <Text style={[styles.navigationButtonText, { fontWeight: 'bold' }]}>
+              {' '}
+              {label}{' '}
+            </Text>
+          </Pressable>
+          {/* View that acts as a space separator - similar to that on the listings */}
+          <View style={{ height: height * 0.01 }}></View>
+        </>
+      );
+    } else if (label != 'Home') {
+      // Button for going to other page
+      return (
+        <>
+          <Pressable
+            onPress={() => navigation.replace('Categories', { title: label })}
+            style={styles.navigationButton}>
+            <Text style={styles.navigationButtonText}> {label} </Text>
+          </Pressable>
+          <View style={{ height: height * 0.005 }}></View>
+        </>
+      );
+    }
   }
 
   const navigationButtonRender = (
@@ -370,7 +352,7 @@ function HomePage({ navigation }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() =>
-              navigation.replace('ProductPage', { title: title, image: image })
+              navigation.navigate('ProductPage', { title: title, image: image })
             }>
             {/*Full Container of product listing*/}
             <View style={styles.listing}>
@@ -398,7 +380,7 @@ function HomePage({ navigation }) {
   const bodyPageRender = ({ item }) =>
     bodyPage(item.type, item.title, item.image);
 
-  const navAnimation = useRef(new Animated.Value(-150)).current; // Animation for navigation list (uses its margin left value for appearance)
+  const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
 
   const enter = () => {
     // Entering animation
@@ -411,7 +393,7 @@ function HomePage({ navigation }) {
   const exit = () => {
     // Exiting animation
     Animated.timing(navAnimation, {
-      toValue: -150,
+      toValue: -175,
       duration: 250,
     }).start();
   };
@@ -421,8 +403,11 @@ function HomePage({ navigation }) {
       {/*Animated View for pop-up button list*/}
       <Animated.View
         style={[styles.navigationListContainer, { marginLeft: navAnimation }]}>
+        {/* Space between top of phone and actual navigation list */}
+        <View style={{ height: height * 0.05 }}></View>
         <FlatList // FlatList for list of buttons to select from
           data={[
+            { label: 'Home' },
             { label: 'Clippers' },
             { label: 'Trimmers' },
             { label: 'Shavers' },
@@ -479,7 +464,8 @@ export default function App() {
   const Stack = createNativeStackNavigator(); // Navigator Stack
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade"}}>
+      <Stack.Navigator
+        screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="Home" component={HomePage} />
         <Stack.Screen name="Categories" component={Categories} />
         <Stack.Screen name="ProductPage" component={ProductPage} />
@@ -506,19 +492,19 @@ const styles = StyleSheet.create({
   // Style for List of Navigation Buttons
   navigationListContainer: {
     flexDirection: 'column',
-    width: width * 0.4,
-    marginTop: height * 0.05,
-    borderWidth: 2,
+    width: width * 0.45,
+    height: height,
     position: 'absolute',
     zIndex: 2,
     backgroundColor: 'white',
   },
   // Style for each of the navigation buttons
   navigationButton: {
-    width: '100%',
+    width: '92.5%',
     height: height * 0.075,
     justifyContent: 'center',
-    borderWidth: 2,
+    alignSelf: 'center',
+    borderRadius: 5,
   },
   // Style for the text of the navigation button
   navigationButtonText: {
@@ -532,7 +518,7 @@ const styles = StyleSheet.create({
   },
   // Title flexbox container (Logo and button for list)
   titleContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     flex: 0.75,
     width: '100%',
   },
@@ -549,13 +535,26 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // Style for back button in product pages
+  backButton: {
+    width: width * 0.095,
+    height: height * 0.05,
+    marginTop: height * 0.05,
+    marginLeft: width * 0.03,
+  },
+  // Style for image of buack button in product pages
+  backButtonImage: {
+    resizeMode: 'stretch',
+    width: '100%',
+    height: '100%',
+  },
   // Style of capelli logo
   capelliLogoImage: {
     resizeMode: 'stretch',
-    marginLeft: width * 0.18,
-    marginTop: height * 0.04,
+    marginTop: height * -0.055,
     width: width * 0.37,
     height: height * 0.135,
+    alignSelf: 'center',
   },
   // Body flexbox container (Banner and featured listings)
   body: {
@@ -601,11 +600,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   //Title text style for Categories page
-  categoriesTitleTextClosed: {
+  categoriesTitleText: {
     fontSize: 30,
     fontWeight: 'bold',
     alignSelf: 'center',
-    marginTop: height * -0.055,
+    marginTop: height * -0.048,
   },
   //Container for Title for Product page
   productTitleContainer: {
@@ -625,6 +624,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginLeft: width * 0.03,
-    paddingTop: 5,
+    padding: 5,
   },
 });
