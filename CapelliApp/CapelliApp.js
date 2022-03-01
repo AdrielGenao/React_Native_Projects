@@ -4,19 +4,20 @@ import {
   View,
   StyleSheet,
   TextInput,
-  Button,
   Pressable,
   Image,
   FlatList,
   Dimensions,
-  ActivityIndicator,
   Animated,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo png
 import lines from './staticImages/ThreeLines.png'; // Three lines png for navigation opener
 import backArrow from './staticImages/BackArrow.png'; // Back Arrow image for product page
+import cart from './staticImages/CartImage.png'; // Cart image for items in cart page
+import account from './staticImages/AccountImage.png'; // Account image for account page
 
 var { height, width } = Dimensions.get('window'); // Device dimensions
 
@@ -28,8 +29,8 @@ var navData = [
   { label: 'Shavers' },
 ];
 
+// Function to call to get product data (takes setState functions as parameters)
 async function getProducts(loadingChanger, productsChanger) {
-  // Function to call to get product data (takes setState functions as parameters)
   try {
     const response = await fetch('https://adrielcapelli.pythonanywhere.com/');
     const json = await response.json();
@@ -49,14 +50,27 @@ function ProductPage({ navigation, route }) {
         <View style={styles.homePage}>
           {/*View for title flexbox*/}
           <View style={styles.productTitleContainer}>
-            <Pressable
+            <Pressable  // Pressable for back button
               onPress={() => {
                 navigation.goBack();
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
             </Pressable>
-            {/*Title text for Product page */}
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image
+              onPress={() => {
+                navigation.navigate('AccountPage');
+              }}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={account} style={styles.accountImage} />
+            </Pressable>
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
@@ -65,7 +79,83 @@ function ProductPage({ navigation, route }) {
               style={styles.productPageImage}
               source={{ uri: route.params.image }}
             />
+            {/*Title text for Product page */}
             <Text style={styles.productTitleText}>{route.params.title}</Text>
+            <Text style={styles.productTitleText}>${route.params.price}</Text>
+          </View>
+        </View>
+      </View>
+    </>
+  );
+}
+
+//Cart page
+function CartPage({ navigation }) {
+  return (
+    <>
+      {/*View for all components on home page*/}
+      <View style={styles.allViews}>
+        {/*Container for Product page*/}
+        <View style={styles.homePage}>
+          {/*View for title flexbox*/}
+          <View style={styles.productTitleContainer}>
+            <Pressable  // Pressable for back button
+              onPress={() => {
+                navigation.goBack();
+              }}
+              style={styles.backButton}>
+              <Image source={backArrow} style={styles.backButtonImage} />
+            </Pressable>
+            <Text style={styles.cartAccountTitle}>Cart</Text>
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {}}
+              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image
+              onPress={() => {
+                navigation.navigate('AccountPage');
+              }}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={account} style={styles.accountImage} />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </>
+  );
+}
+
+//Account page
+function AccountPage({ navigation }) {
+  return (
+    <>
+      {/*View for all components on home page*/}
+      <View style={styles.allViews}>
+        {/*Container for Product page*/}
+        <View style={styles.homePage}>
+          {/*View for title flexbox*/}
+          <View style={styles.productTitleContainer}>
+            <Pressable  // Pressable for back button
+              onPress={() => {
+                navigation.goBack();
+              }}
+              style={styles.backButton}>
+              <Image source={backArrow} style={styles.backButtonImage} />
+            </Pressable>
+            <Text style={styles.cartAccountTitle}>Account</Text>
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image
+              onPress={() => {}}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={account} style={styles.accountImage} />
+            </Pressable>
           </View>
         </View>
       </View>
@@ -79,7 +169,7 @@ function Categories({ navigation, route }) {
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
   const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
   const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
-
+  const [search, searchChange] = useState(); // State for search query
   useEffect(() => {
     // useEffect used to only call getProducts function once: when page is rendered
     getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
@@ -92,6 +182,7 @@ function Categories({ navigation, route }) {
       productRow['title'] = productsReturn[i][1];
       productRow['image'] = productsReturn[i][2];
       productRow['category'] = productsReturn[i][3];
+      productRow['price'] = productsReturn[i][4];
       productsArray.push(productRow);
     }
     loadingChange(false);
@@ -157,7 +248,7 @@ function Categories({ navigation, route }) {
   ) => navigationButton(item.label);
 
   // Function for rendering listings based on their category to match current
-  function listings(type, title, image, category) {
+  function listings(type, title, image, category, price) {
     if (type == 'product' && category.includes(route.params.title)) {
       // Listing rendering based on categories
       return (
@@ -165,7 +256,11 @@ function Categories({ navigation, route }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() =>
-              navigation.navigate('ProductPage', { title: title, image: image })
+              navigation.navigate('ProductPage', {
+                title: title,
+                image: image,
+                price: price,
+              })
             }>
             {/*Full Container of product listing*/}
             <View style={styles.listing}>
@@ -174,10 +269,11 @@ function Categories({ navigation, route }) {
                 style={styles.productListingImage}
                 source={{ uri: image }}
               />
-              {/*View for text of listing based on if list of buttons is opened or closed*/}
+              {/*View for text of listing*/}
               <View style={styles.productText}>
                 {/*Actual text*/}
                 <Text style={styles.productTextTitle}>{title}</Text>
+                <Text style={styles.productTextTitle}>${price}</Text>
               </View>
             </View>
           </Pressable>
@@ -191,7 +287,7 @@ function Categories({ navigation, route }) {
     /*Actual rendering of home page listings by calling on function*/
   }
   const listingsRender = ({ item }) =>
-    listings(item.type, item.title, item.image, item.category);
+    listings(item.type, item.title, item.image, item.category, item.price);
 
   const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
 
@@ -199,7 +295,8 @@ function Categories({ navigation, route }) {
     // Entering animation
     Animated.timing(navAnimation, {
       toValue: 0,
-      duration: 200,
+      duration: 250,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -207,7 +304,8 @@ function Categories({ navigation, route }) {
     // Exiting animation
     Animated.timing(navAnimation, {
       toValue: -175,
-      duration: 200,
+      duration: 250,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -240,7 +338,7 @@ function Categories({ navigation, route }) {
         <View style={styles.homePage}>
           {/*View for title flexbox*/}
           <View style={styles.categoriesTitleContainer}>
-            <Pressable
+            <Pressable // Pressable for navigation opener
               onPress={() => {
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
                 enter(); // Start animation for nav list appearance
@@ -250,6 +348,33 @@ function Categories({ navigation, route }) {
             </Pressable>
             {/*Title text for Categories page */}
             <Text style={styles.categoriesTitleText}>{route.params.title}</Text>
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.0575 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image
+              onPress={() => {
+                navigation.navigate('AccountPage');
+              }}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={account} style={styles.accountImage} />
+            </Pressable>
+          </View>
+          {/* View/Container for Search Bar */}
+          <View style={{ height: 50, paddingBottom: 5 }}>
+            {/* Search Bar */}
+            <TextInput
+              style={styles.searchBar}
+              onChangeText={searchChange}
+              placeholder="Search for a product here!"
+              onSubmitEditing={() =>
+                navigation.replace('Search', { title: search })
+              }
+              clearButtonMode="while-editing"
+            />
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
@@ -282,6 +407,7 @@ function Search({ navigation, route }) {
       productRow['title'] = productsReturn[i][1];
       productRow['image'] = productsReturn[i][2];
       productRow['category'] = productsReturn[i][3];
+      productRow['price'] = productsReturn[i][4];
       productsArray.push(productRow);
     }
     loadingChange(false);
@@ -322,7 +448,7 @@ function Search({ navigation, route }) {
   ) => navigationButton(item.label);
 
   // Function for rendering listings based on the search query to look for matches in categories or title of products
-  function listings(type, title, image, category) {
+  function listings(type, title, image, category, price) {
     let searchQuery = route.params.title.toLowerCase(); // Search query turned into lower case
     let searchArray = searchQuery.split(' '); // Array of strings from search query split by spaces
     let searchQueryIncludes = false; // Boolean used to check if product titles or categories include words of the search query
@@ -345,7 +471,11 @@ function Search({ navigation, route }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() =>
-              navigation.navigate('ProductPage', { title: title, image: image })
+              navigation.navigate('ProductPage', {
+                title: title,
+                image: image,
+                price: price,
+              })
             }>
             {/*Full Container of product listing*/}
             <View style={styles.listing}>
@@ -354,10 +484,11 @@ function Search({ navigation, route }) {
                 style={styles.productListingImage}
                 source={{ uri: image }}
               />
-              {/*View for text of listing based on if list of buttons is opened or closed*/}
+              {/*View for text of listing*/}
               <View style={styles.productText}>
                 {/*Actual text*/}
                 <Text style={styles.productTextTitle}>{title}</Text>
+                <Text style={styles.productTextTitle}>${price}</Text>
               </View>
             </View>
           </Pressable>
@@ -371,7 +502,7 @@ function Search({ navigation, route }) {
     /*Actual rendering of home page listings by calling on function*/
   }
   const listingsRender = ({ item }) =>
-    listings(item.type, item.title, item.image, item.category);
+    listings(item.type, item.title, item.image, item.category, item.price);
 
   const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
 
@@ -379,7 +510,8 @@ function Search({ navigation, route }) {
     // Entering animation
     Animated.timing(navAnimation, {
       toValue: 0,
-      duration: 200,
+      duration: 250,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -387,7 +519,8 @@ function Search({ navigation, route }) {
     // Exiting animation
     Animated.timing(navAnimation, {
       toValue: -175,
-      duration: 200,
+      duration: 250,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -420,13 +553,27 @@ function Search({ navigation, route }) {
         <View style={styles.homePage}>
           {/*View for title flexbox*/}
           <View style={styles.searchPageTitleContainer}>
-            <Pressable
+            <Pressable // Pressable for navigation opener
               onPress={() => {
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
                 enter(); // Start animation for nav list appearance
               }}
               style={styles.openNavigationButton}>
               <Image source={lines} style={styles.openNavigationButtonImage} />
+            </Pressable>
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image
+              onPress={() => {
+                navigation.navigate('AccountPage');
+              }}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={account} style={styles.accountImage} />
             </Pressable>
           </View>
           {/* View/Container for Search Bar */}
@@ -474,6 +621,7 @@ function HomePage({ navigation }) {
       productRow['title'] = productsReturn[i][1];
       productRow['image'] = productsReturn[i][2];
       productRow['category'] = productsReturn[i][3];
+      productRow['price'] = productsReturn[i][4];
       productsArray.push(productRow);
     }
     productsArray.splice(0, 0, {
@@ -522,7 +670,7 @@ function HomePage({ navigation }) {
     { item } // Actual rendering of navigation buttons by calling function
   ) => navigationButton(item.label);
 
-  function bodyPage(type, title, image) {
+  function bodyPage(type, title, image, price) {
     // Function for rendering body of home page
     if (type == 'banner') {
       // Banner rendering
@@ -541,7 +689,11 @@ function HomePage({ navigation }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() =>
-              navigation.navigate('ProductPage', { title: title, image: image })
+              navigation.navigate('ProductPage', {
+                title: title,
+                image: image,
+                price: price,
+              })
             }>
             {/*Full Container of product listing*/}
             <View style={styles.listing}>
@@ -550,10 +702,11 @@ function HomePage({ navigation }) {
                 style={styles.productListingImage}
                 source={{ uri: image }}
               />
-              {/*View for text of listing based on if list of buttons is opened or closed*/}
+              {/*View for text of listing*/}
               <View style={styles.productText}>
                 {/*Actual text*/}
                 <Text style={styles.productTextTitle}>{title}</Text>
+                <Text style={styles.productTextTitle}>${price}</Text>
               </View>
             </View>
           </Pressable>
@@ -567,7 +720,7 @@ function HomePage({ navigation }) {
     /*Actual rendering of home page listings by calling on function*/
   }
   const bodyPageRender = ({ item }) =>
-    bodyPage(item.type, item.title, item.image);
+    bodyPage(item.type, item.title, item.image, item.price);
 
   const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
 
@@ -576,6 +729,7 @@ function HomePage({ navigation }) {
     Animated.timing(navAnimation, {
       toValue: 0,
       duration: 250,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -584,6 +738,7 @@ function HomePage({ navigation }) {
     Animated.timing(navAnimation, {
       toValue: -175,
       duration: 250,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -616,7 +771,7 @@ function HomePage({ navigation }) {
         <View style={styles.homePage}>
           {/*View for title flexbox*/}
           <View style={styles.titleContainer}>
-            <Pressable
+            <Pressable // Pressable for navigation opener
               onPress={() => {
                 enter(); // Start animation for nav list appearance
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
@@ -625,6 +780,20 @@ function HomePage({ navigation }) {
               <Image source={lines} style={styles.openNavigationButtonImage} />
             </Pressable>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image
+              onPress={() => {
+                navigation.navigate('AccountPage');
+              }}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={account} style={styles.accountImage} />
+            </Pressable>
           </View>
           {/* View/Container for Search Bar */}
           <View style={{ height: 50, paddingBottom: 5 }}>
@@ -654,6 +823,7 @@ function HomePage({ navigation }) {
 export default function App() {
   const Stack = createNativeStackNavigator(); // Navigator Stack
   return (
+    // Container to hold all navigators/stacks
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{ headerShown: false, animation: 'fade' }}>
@@ -661,14 +831,16 @@ export default function App() {
         <Stack.Screen name="Categories" component={Categories} />
         <Stack.Screen name="Search" component={Search} />
         <Stack.Screen name="ProductPage" component={ProductPage} />
+        <Stack.Screen name="CartPage" component={CartPage} />
+        <Stack.Screen name="AccountPage" component={AccountPage} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
+// Styles for all components
 const styles = StyleSheet.create({
-  // Styles for all components
-  // All View FlexBox
+  // All View FlexBox/Container
   allViews: {
     flexDirection: 'row',
     height: height,
@@ -735,7 +907,7 @@ const styles = StyleSheet.create({
     marginTop: height * 0.05,
     marginLeft: width * 0.03,
   },
-  // Style for image of buack button in product pages
+  // Style for image of back button in product pages
   backButtonImage: {
     resizeMode: 'stretch',
     width: '100%',
@@ -749,10 +921,38 @@ const styles = StyleSheet.create({
     height: height * 0.135,
     alignSelf: 'center',
   },
+  // Style of cart pressable
+  cartPressable: {
+    resizeMode: 'stretch',
+    width: width * 0.115,
+    height: height * 0.065,
+    alignSelf: 'flex-end',
+    marginRight: width * 0.02,
+  },
+  // Style for image cart
+  cartImage: {
+    resizeMode: 'stretch',
+    width: '100%',
+    height: '100%',
+  },
+  // Style of cart pressable
+  accountPressable: {
+    resizeMode: 'stretch',
+    width: width * 0.1,
+    height: height * 0.055,
+    alignSelf: 'flex-end',
+    marginRight: width * 0.175,
+  },
+  // Style for image cart
+  accountImage: {
+    resizeMode: 'stretch',
+    width: '100%',
+    height: '100%',
+  },
   //TextInput/SearchBar Style
   searchBar: {
     alignSelf: 'center',
-    width: '95%',
+    width: '99%',
     height: '100%',
     borderWidth: 2,
     fontSize: 21,
@@ -803,8 +1003,11 @@ const styles = StyleSheet.create({
   //Container for Title for Categories page
   categoriesTitleContainer: {
     flexDirection: 'column',
+    justifyContent: 'center',
     flex: 0.5,
     textAlign: 'center',
+    marginTop: height * -0.02,
+    paddingBottom: 5,
   },
   //Title text style for Categories page
   categoriesTitleText: {
@@ -813,9 +1016,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: height * -0.048,
   },
+  //Title text style for cart + account page
+  cartAccountTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    alignSelf: 'center',
+    marginTop: height * -0.0525,
+  },
   //Container for Title for Product page
   productTitleContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     flex: 0.5,
     alignContent: 'left',
   },
