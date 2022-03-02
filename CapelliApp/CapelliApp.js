@@ -15,9 +15,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo png
 import lines from './staticImages/ThreeLines.png'; // Three lines png for navigation opener
-import backArrow from './staticImages/BackArrow.png'; // Back Arrow image for product page
+import backArrow from './staticImages/BackArrow.png'; // Back Arrow image for product and account/cart pages
 import cart from './staticImages/CartImage.png'; // Cart image for items in cart page
 import account from './staticImages/AccountImage.png'; // Account image for account page
+import cartSelected from './staticImages/CartImageSelected.png'; // Image to show the current page - Cart page
+import accountSelected from './staticImages/AccountImageSelected.png'; // Image to show the current page - Account page
 
 var { height, width } = Dimensions.get('window'); // Device dimensions
 
@@ -47,21 +49,22 @@ function ProductPage({ navigation, route }) {
       {/*View for all components on home page*/}
       <View style={styles.allViews}>
         {/*Container for Product page*/}
-        <View style={styles.homePage}>
+        <View style={styles.mainPage}>
           {/*View for title flexbox*/}
-          <View style={styles.productTitleContainer}>
-            <Pressable  // Pressable for back button
+          <View style={styles.titleContainer}>
+            <Pressable // Pressable for back button
               onPress={() => {
                 navigation.goBack();
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
             </Pressable>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
                 navigation.navigate('CartPage');
               }}
-              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
+              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
               <Image source={cart} style={styles.cartImage} />
             </Pressable>
             <Pressable // Pressable for account image
@@ -95,22 +98,24 @@ function CartPage({ navigation }) {
     <>
       {/*View for all components on home page*/}
       <View style={styles.allViews}>
-        {/*Container for Product page*/}
-        <View style={styles.homePage}>
+        {/*Container for Cart page*/}
+        <View style={styles.mainPage}>
           {/*View for title flexbox*/}
-          <View style={styles.productTitleContainer}>
-            <Pressable  // Pressable for back button
+          <View style={styles.titleContainer}>
+            <Pressable // Pressable for back button
               onPress={() => {
                 navigation.goBack();
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
             </Pressable>
-            <Text style={styles.cartAccountTitle}>Cart</Text>
-            <Pressable // Pressable for shopping cart image
-              onPress={() => {}}
-              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
-              <Image source={cart} style={styles.cartImage} />
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            <Pressable // Pressable for shopping cart image - image is different color to show that user is currently on cart page
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+              <Image source={cartSelected} style={styles.cartImage} />
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
@@ -119,6 +124,9 @@ function CartPage({ navigation }) {
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
             </Pressable>
+          </View>
+          <View style={styles.body}>
+            <Text style={styles.cartAccountTitle}>Cart</Text>
           </View>
         </View>
       </View>
@@ -132,30 +140,35 @@ function AccountPage({ navigation }) {
     <>
       {/*View for all components on home page*/}
       <View style={styles.allViews}>
-        {/*Container for Product page*/}
-        <View style={styles.homePage}>
+        {/*Container for Account page*/}
+        <View style={styles.mainPage}>
           {/*View for title flexbox*/}
-          <View style={styles.productTitleContainer}>
-            <Pressable  // Pressable for back button
+          <View style={styles.titleContainer}>
+            <Pressable // Pressable for back button
               onPress={() => {
                 navigation.goBack();
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
             </Pressable>
-            <Text style={styles.cartAccountTitle}>Account</Text>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
                 navigation.navigate('CartPage');
               }}
-              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
+              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
               <Image source={cart} style={styles.cartImage} />
             </Pressable>
-            <Pressable // Pressable for account image
-              onPress={() => {}}
+            <Pressable // Pressable for account image - image is different color to show that user is currently on account page
+              onPress={() => {
+                navigation.navigate('AccountPage');
+              }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
-              <Image source={account} style={styles.accountImage} />
+              <Image source={accountSelected} style={styles.accountImage} />
             </Pressable>
+          </View>
+          <View style={styles.body}>
+            <Text style={styles.cartAccountTitle}>Account</Text>
           </View>
         </View>
       </View>
@@ -163,13 +176,14 @@ function AccountPage({ navigation }) {
   );
 }
 
-//Categories page
-function Categories({ navigation, route }) {
+//Search Response and Categories page
+function SearchAndCategories({ navigation, route }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
   const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
   const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
-  const [search, searchChange] = useState(); // State for search query
+  const [search, searchChange] = useState(route.params.title); // State for search query
+
   useEffect(() => {
     // useEffect used to only call getProducts function once: when page is rendered
     getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
@@ -231,7 +245,9 @@ function Categories({ navigation, route }) {
         return (
           <>
             <Pressable
-              onPress={() => navigation.replace('Categories', { title: label })}
+              onPress={() =>
+                navigation.replace('SearchAndCategories', { title: label })
+              }
               style={styles.navigationButton}>
               <Text style={styles.navigationButtonText}> {label} </Text>
             </Pressable>
@@ -240,206 +256,6 @@ function Categories({ navigation, route }) {
           </>
         );
       }
-    }
-  }
-
-  const navigationButtonRender = (
-    { item } // Actual rendering of navigation buttons by calling function
-  ) => navigationButton(item.label);
-
-  // Function for rendering listings based on their category to match current
-  function listings(type, title, image, category, price) {
-    if (type == 'product' && category.includes(route.params.title)) {
-      // Listing rendering based on categories
-      return (
-        <>
-          {/*Pressable Container to make the listing a pressable to go to its product page*/}
-          <Pressable
-            onPress={() =>
-              navigation.navigate('ProductPage', {
-                title: title,
-                image: image,
-                price: price,
-              })
-            }>
-            {/*Full Container of product listing*/}
-            <View style={styles.listing}>
-              {/*Image for listing*/}
-              <Image
-                style={styles.productListingImage}
-                source={{ uri: image }}
-              />
-              {/*View for text of listing*/}
-              <View style={styles.productText}>
-                {/*Actual text*/}
-                <Text style={styles.productTextTitle}>{title}</Text>
-                <Text style={styles.productTextTitle}>${price}</Text>
-              </View>
-            </View>
-          </Pressable>
-          {/*View for creating a space between components of body page */}
-          <View style={{ height: height * 0.01, width: '100%' }}></View>
-        </>
-      );
-    }
-  }
-  {
-    /*Actual rendering of home page listings by calling on function*/
-  }
-  const listingsRender = ({ item }) =>
-    listings(item.type, item.title, item.image, item.category, item.price);
-
-  const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
-
-  const enter = () => {
-    // Entering animation
-    Animated.timing(navAnimation, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const exit = () => {
-    // Exiting animation
-    Animated.timing(navAnimation, {
-      toValue: -175,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  return (
-    <>
-      {/*Animated View for pop-up button list*/}
-      <Animated.View
-        style={[styles.navigationListContainer, { marginLeft: navAnimation }]}>
-        {/* Space between top of phone and actual navigation list */}
-        <View style={{ height: height * 0.05 }}></View>
-        <FlatList // FlatList for list of buttons to select from
-          data={navData}
-          renderItem={navigationButtonRender}
-        />
-      </Animated.View>
-      {/*View for all components on categories page*/}
-      <View
-        opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
-        style={styles.allViews}>
-        {navigationView ? (
-          <Pressable // Creates pressable when navigation list is open that acts as an opaque "canceler" to close navigation list, and starts the exit animation for the nav list
-            onPress={() => {
-              exit();
-              navigationChange(!navigationView);
-            }}
-            style={styles.allViewsPressable}
-            opacity={1}></Pressable>
-        ) : null}
-        {/*Container for Categories page*/}
-        <View style={styles.homePage}>
-          {/*View for title flexbox*/}
-          <View style={styles.categoriesTitleContainer}>
-            <Pressable // Pressable for navigation opener
-              onPress={() => {
-                navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
-                enter(); // Start animation for nav list appearance
-              }}
-              style={styles.openNavigationButton}>
-              <Image source={lines} style={styles.openNavigationButtonImage} />
-            </Pressable>
-            {/*Title text for Categories page */}
-            <Text style={styles.categoriesTitleText}>{route.params.title}</Text>
-            <Pressable // Pressable for shopping cart image
-              onPress={() => {
-                navigation.navigate('CartPage');
-              }}
-              style={[styles.cartPressable, { marginTop: height * -0.0575 }]}>
-              <Image source={cart} style={styles.cartImage} />
-            </Pressable>
-            <Pressable // Pressable for account image
-              onPress={() => {
-                navigation.navigate('AccountPage');
-              }}
-              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
-              <Image source={account} style={styles.accountImage} />
-            </Pressable>
-          </View>
-          {/* View/Container for Search Bar */}
-          <View style={{ height: 50, paddingBottom: 5 }}>
-            {/* Search Bar */}
-            <TextInput
-              style={styles.searchBar}
-              onChangeText={searchChange}
-              placeholder="Search for a product here!"
-              onSubmitEditing={() =>
-                navigation.replace('Search', { title: search })
-              }
-              clearButtonMode="while-editing"
-            />
-          </View>
-          {/*View for body flexbox*/}
-          <View style={styles.body}>
-            {/*FlatList of product listings*/}
-            <FlatList data={productsArray} renderItem={listingsRender} />
-          </View>
-        </View>
-      </View>
-    </>
-  );
-}
-
-//Search Response page
-function Search({ navigation, route }) {
-  const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
-  const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
-  const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
-  const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
-  const [search, searchChange] = useState(route.params.title); // State for search query
-
-  useEffect(() => {
-    // useEffect used to only call getProducts function once: when page is rendered
-    getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
-  }, []);
-  if (loading) {
-    // Method for putting database products into an array of dictionaries (if statement makes sure it loads only after get request is complete)
-    for (var i = 0; i < productsReturn.length; i++) {
-      var productRow = {};
-      productRow['type'] = productsReturn[i][0];
-      productRow['title'] = productsReturn[i][1];
-      productRow['image'] = productsReturn[i][2];
-      productRow['category'] = productsReturn[i][3];
-      productRow['price'] = productsReturn[i][4];
-      productsArray.push(productRow);
-    }
-    loadingChange(false);
-  }
-
-  function navigationButton(label) {
-    // Function for rendering buttons for navigation list
-    if (label == 'Home') {
-      // Button for going to home page
-      return (
-        <>
-          <Pressable
-            onPress={() => navigation.replace('Home')}
-            style={styles.navigationButton}>
-            <Text style={styles.navigationButtonText}> {label} </Text>
-          </Pressable>
-          {/* View that acts as a space separator - similar to that on the listings */}
-          <View style={{ height: height * 0.01 }}></View>
-        </>
-      );
-    } else if (label != 'Home') {
-      return (
-        <>
-          <Pressable
-            onPress={() => navigation.replace('Categories', { title: label })}
-            style={styles.navigationButton}>
-            <Text style={styles.navigationButtonText}> {label} </Text>
-          </Pressable>
-          {/* View that acts as a space separator - similar to that on the listings */}
-          <View style={{ height: height * 0.01 }}></View>
-        </>
-      );
     }
   }
 
@@ -504,7 +320,7 @@ function Search({ navigation, route }) {
   const listingsRender = ({ item }) =>
     listings(item.type, item.title, item.image, item.category, item.price);
 
-  const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
+  const navAnimation = useRef(new Animated.Value(-190)).current; // Animation for navigation list (uses its margin left value for appearance)
 
   const enter = () => {
     // Entering animation
@@ -518,7 +334,7 @@ function Search({ navigation, route }) {
   const exit = () => {
     // Exiting animation
     Animated.timing(navAnimation, {
-      toValue: -175,
+      toValue: -190,
       duration: 250,
       useNativeDriver: false,
     }).start();
@@ -549,23 +365,24 @@ function Search({ navigation, route }) {
             style={styles.allViewsPressable}
             opacity={1}></Pressable>
         ) : null}
-        {/*Container for Search page*/}
-        <View style={styles.homePage}>
+        {/*Container for Search/Category page*/}
+        <View style={styles.mainPage}>
           {/*View for title flexbox*/}
-          <View style={styles.searchPageTitleContainer}>
+          <View style={styles.titleContainer}>
             <Pressable // Pressable for navigation opener
               onPress={() => {
-                navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
                 enter(); // Start animation for nav list appearance
+                navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
               <Image source={lines} style={styles.openNavigationButtonImage} />
             </Pressable>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
                 navigation.navigate('CartPage');
               }}
-              style={[styles.cartPressable, { marginTop: height * -0.06 }]}>
+              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
               <Image source={cart} style={styles.cartImage} />
             </Pressable>
             <Pressable // Pressable for account image
@@ -585,7 +402,7 @@ function Search({ navigation, route }) {
               placeholder="Search for a product here!"
               value={search}
               onSubmitEditing={() =>
-                navigation.replace('Search', { title: search })
+                navigation.replace('SearchAndCategories', { title: search })
               }
               clearButtonMode="while-editing"
             />
@@ -602,7 +419,7 @@ function Search({ navigation, route }) {
 }
 
 // Home Page Function for App
-function HomePage({ navigation }) {
+function Home({ navigation }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
   const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
@@ -656,7 +473,9 @@ function HomePage({ navigation }) {
       return (
         <>
           <Pressable
-            onPress={() => navigation.replace('Categories', { title: label })}
+            onPress={() =>
+              navigation.replace('SearchAndCategories', { title: label })
+            }
             style={styles.navigationButton}>
             <Text style={styles.navigationButtonText}> {label} </Text>
           </Pressable>
@@ -722,7 +541,7 @@ function HomePage({ navigation }) {
   const bodyPageRender = ({ item }) =>
     bodyPage(item.type, item.title, item.image, item.price);
 
-  const navAnimation = useRef(new Animated.Value(-175)).current; // Animation for navigation list (uses its margin left value for appearance)
+  const navAnimation = useRef(new Animated.Value(-190)).current; // Animation for navigation list (uses its margin left value for appearance)
 
   const enter = () => {
     // Entering animation
@@ -736,7 +555,7 @@ function HomePage({ navigation }) {
   const exit = () => {
     // Exiting animation
     Animated.timing(navAnimation, {
-      toValue: -175,
+      toValue: -190,
       duration: 250,
       useNativeDriver: false,
     }).start();
@@ -768,7 +587,7 @@ function HomePage({ navigation }) {
             opacity={1}></Pressable>
         ) : null}
         {/*Container for main home page*/}
-        <View style={styles.homePage}>
+        <View style={styles.mainPage}>
           {/*View for title flexbox*/}
           <View style={styles.titleContainer}>
             <Pressable // Pressable for navigation opener
@@ -803,7 +622,7 @@ function HomePage({ navigation }) {
               onChangeText={searchChange}
               placeholder="Search for a product here!"
               onSubmitEditing={() =>
-                navigation.replace('Search', { title: search })
+                navigation.replace('SearchAndCategories', { title: search })
               }
               clearButtonMode="while-editing"
             />
@@ -827,9 +646,11 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="Home" component={HomePage} />
-        <Stack.Screen name="Categories" component={Categories} />
-        <Stack.Screen name="Search" component={Search} />
+        <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen
+          name="SearchAndCategories"
+          component={SearchAndCategories}
+        />
         <Stack.Screen name="ProductPage" component={ProductPage} />
         <Stack.Screen name="CartPage" component={CartPage} />
         <Stack.Screen name="AccountPage" component={AccountPage} />
@@ -876,7 +697,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   // Main home page style for top logo, banner, and featured listings
-  homePage: {
+  mainPage: {
     flexDirection: 'column',
     flex: 1,
   },
@@ -941,7 +762,7 @@ const styles = StyleSheet.create({
     width: width * 0.1,
     height: height * 0.055,
     alignSelf: 'flex-end',
-    marginRight: width * 0.175,
+    marginRight: width * 0.19,
   },
   // Style for image cart
   accountImage: {
@@ -996,38 +817,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  searchPageTitleContainer: {
-    flexDirection: 'column',
-    flex: 0.45,
-  },
-  //Container for Title for Categories page
-  categoriesTitleContainer: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-    flex: 0.5,
-    textAlign: 'center',
-    marginTop: height * -0.02,
-    paddingBottom: 5,
-  },
-  //Title text style for Categories page
-  categoriesTitleText: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    alignSelf: 'center',
-    marginTop: height * -0.048,
-  },
   //Title text style for cart + account page
   cartAccountTitle: {
     fontSize: 30,
     fontWeight: 'bold',
     alignSelf: 'center',
-    marginTop: height * -0.0525,
-  },
-  //Container for Title for Product page
-  productTitleContainer: {
-    flexDirection: 'column',
-    flex: 0.5,
-    alignContent: 'left',
+    marginTop: height * -0.03,
   },
   // Style for the image of the product page
   productPageImage: {
