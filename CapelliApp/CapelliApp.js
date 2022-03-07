@@ -34,7 +34,9 @@ var navData = [
 // Function to call to get product data (takes setState functions as parameters)
 async function getProducts(loadingChanger, productsChanger) {
   try {
-    const response = await fetch('https://adrielcapelli.pythonanywhere.com/');
+    const response = await fetch(
+      'https://adrielcapelli.pythonanywhere.com/Products'
+    );
     const json = await response.json();
     productsChanger(json.products); // Changes state variable to hold requested products
   } finally {
@@ -42,7 +44,23 @@ async function getProducts(loadingChanger, productsChanger) {
   }
 }
 
-//Product page
+async function sendData(email, username, password) {
+    const response = await fetch(
+      'https://adrielcapelli.pythonanywhere.com/Accounts',
+      {
+        method: 'POST',
+        headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 'email': email, 'username': username, 'password': password }),
+      }
+    );
+    const json = await response.json();
+    console.log(json);
+}
+
+// Product Page
 function ProductPage({ navigation, route }) {
   return (
     <>
@@ -92,7 +110,7 @@ function ProductPage({ navigation, route }) {
   );
 }
 
-//Cart page
+// Cart Page
 function CartPage({ navigation }) {
   return (
     <>
@@ -134,8 +152,76 @@ function CartPage({ navigation }) {
   );
 }
 
-//Account page
+// Account Page
 function AccountPage({ navigation }) {
+  const [email, emailChange] = useState(''); // State for email
+  const [confEmail, confEmailChange] = useState(''); // State for confirm email
+  const [username, usernameChange] = useState(''); // State for username
+  const [password, passwordChange] = useState(''); // State for password
+  const [confPassword, confPasswordChange] = useState(''); // State for confirm password
+  const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
+
+  // Function for rendering an input bar
+  function inputBarRender(name, confirmation, placeholder, onChange) {
+    // If the input bar is not a confirmation input (either an email or password)
+    if (!confirmation) {
+      return (
+        <>
+          {/*View for creating a space between input components of account sign-up page */}
+          <View style={{ height: height * 0.02, width: '100%' }}></View>
+          {/* Input Bar + Label*/}
+          <Text style={styles.inputLabel}>{name}: </Text>
+          <TextInput
+            style={styles.inputBar}
+            onChangeText={onChange}
+            placeholder={placeholder}
+            clearButtonMode="while-editing"
+          />
+        </>
+      );
+    }
+    // Else if the input bar is of confirmatoin input
+    else if (confirmation) {
+      return (
+        <>
+          {/*View for creating a space between input components of account sign-up page */}
+          <View style={{ height: height * 0.02, width: '100%' }}></View>
+          {/* Email Input Bar + Label*/}
+          <Text style={styles.inputLabel}>Confirm {name}: </Text>
+          <TextInput
+            style={styles.inputBar}
+            onChangeText={onChange}
+            placeholder={placeholder}
+            clearButtonMode="while-editing"
+          />
+        </>
+      );
+    }
+  }
+
+  function inputCheck() {
+    if (submitPressed) {
+      if (email.length == 0) {
+        return 'No email provided!';
+      } else if (confEmail.length == 0) {
+        return 'No confirmation email provided!';
+      } else if (username.length == 0) {
+        return 'No username provided!';
+      } else if (password.length == 0) {
+        return 'No password provided!';
+      } else if (confPassword.length == 0) {
+        return 'No confirmation password provided!';
+      }
+      sendData(email,username,password);
+      submitChange(false);
+    }
+    if (confEmail.length > 0 && confEmail != email) {
+      return 'Emails do not match!';
+    } else if (confPassword.length > 0 && confPassword != password) {
+      return 'Password do not match!';
+    }
+  }
+
   return (
     <>
       {/*View for all components on home page*/}
@@ -168,7 +254,51 @@ function AccountPage({ navigation }) {
             </Pressable>
           </View>
           <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Account</Text>
+            <Text style={styles.cartAccountTitle}>Account{'\n'}</Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', paddingLeft: 2 }}>
+              Sign up to see and track your orders!{'\n'}
+            </Text>
+            {inputBarRender(
+              'Email',
+              false,
+              'Enter your email here',
+              emailChange
+            )}
+            {inputBarRender(
+              'Email',
+              true,
+              'Confirm your email here',
+              confEmailChange
+            )}
+            {inputBarRender(
+              'Username',
+              false,
+              'Enter your username here',
+              usernameChange
+            )}
+            {inputBarRender(
+              'Password',
+              false,
+              'Enter your password here',
+              passwordChange
+            )}
+            {inputBarRender(
+              'Password',
+              true,
+              'Confirm your password here',
+              confPasswordChange
+            )}
+            <Text style={{ fontSize: 18, fontWeight: 'bold', paddingLeft: 2 }}>
+              {'\n'}
+              {inputCheck()}
+            </Text>
+            {/*View for creating a space between input components of account sign-up page */}
+            <View style={{ height: height * 0.02, width: '100%' }}></View>
+            <Pressable // Submit button
+              style={styles.submitButton}
+              onPress={() => submitChange(true)}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold' }}>SUBMIT</Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -176,7 +306,7 @@ function AccountPage({ navigation }) {
   );
 }
 
-//Search Response and Categories page
+// Search Response and Categories Page
 function SearchAndCategories({ navigation, route }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
@@ -281,7 +411,7 @@ function SearchAndCategories({ navigation, route }) {
       }
     }
     if (type == 'product' && searchQueryIncludes) {
-      // Listing rendering based on categories
+      // Listing rendering based on categories/search query
       return (
         <>
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
@@ -352,7 +482,7 @@ function SearchAndCategories({ navigation, route }) {
           renderItem={navigationButtonRender}
         />
       </Animated.View>
-      {/*View for all components on Search page*/}
+      {/*View for all components on Search/Categories page*/}
       <View
         opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
         style={styles.allViews}>
@@ -418,7 +548,7 @@ function SearchAndCategories({ navigation, route }) {
   );
 }
 
-// Home Page Function for App
+// Home Page
 function Home({ navigation }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
@@ -535,6 +665,7 @@ function Home({ navigation }) {
       );
     }
   }
+
   {
     /*Actual rendering of home page listings by calling on function*/
   }
@@ -638,7 +769,7 @@ function Home({ navigation }) {
   );
 }
 
-//Complete app that calls on different pages to render (React Navigation)
+// Complete app that calls on different pages to render (React Navigation)
 export default function App() {
   const Stack = createNativeStackNavigator(); // Navigator Stack
   return (
@@ -770,7 +901,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  //TextInput/SearchBar Style
+  // TextInput/SearchBar Style
   searchBar: {
     alignSelf: 'center',
     width: '99%',
@@ -780,7 +911,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingLeft: 5,
   },
-  // Body flexbox container (Banner and featured listings)
+  // Body flexbox container (container for everything below title container)
   body: {
     flexDirection: 'column',
     flex: 3,
@@ -817,13 +948,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  //Title text style for cart + account page
-  cartAccountTitle: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    alignSelf: 'center',
-    marginTop: height * -0.03,
-  },
   // Style for the image of the product page
   productPageImage: {
     width: width,
@@ -831,11 +955,43 @@ const styles = StyleSheet.create({
     resizeMode: 'stretch',
     borderRadius: 20,
   },
-  //Title text style for Product page
+  // Title text style for Product page
   productTitleText: {
     fontSize: 22,
     fontWeight: 'bold',
     marginLeft: width * 0.03,
     padding: 5,
+  },
+  // Title text style for cart + account page
+  cartAccountTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    alignSelf: 'center',
+    marginTop: height * -0.03,
+  },
+  // Account Input Lable for text input box
+  inputLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    padding: 2,
+  },
+  // Input Bar below input label
+  inputBar: {
+    width: '99%',
+    height: 40,
+    borderWidth: 2,
+    fontSize: 21,
+    borderRadius: 5,
+    padding: 2,
+    alignSelf: 'center',
+  },
+  // Submit button for account sign-up
+  submitButton: {
+    width: '45%',
+    height: height * 0.06,
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#05acbe',
   },
 });
