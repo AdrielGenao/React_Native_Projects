@@ -13,7 +13,7 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo png
+import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo pngA
 import lines from './staticImages/ThreeLines.png'; // Three lines png for navigation opener
 import backArrow from './staticImages/BackArrow.png'; // Back Arrow image for product and account/cart pages
 import cart from './staticImages/CartImage.png'; // Cart image for items in cart page
