@@ -9,11 +9,14 @@ import {
   FlatList,
   Dimensions,
   Animated,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo pngA
+import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo png
 import lines from './staticImages/ThreeLines.png'; // Three lines png for navigation opener
 import backArrow from './staticImages/BackArrow.png'; // Back Arrow image for product and account/cart pages
 import cart from './staticImages/CartImage.png'; // Cart image for items in cart page
@@ -44,20 +47,45 @@ async function getProducts(loadingChanger, productsChanger) {
   }
 }
 
-async function sendData(email, username, password) {
-    const response = await fetch(
-      'https://adrielcapelli.pythonanywhere.com/Accounts',
-      {
-        method: 'POST',
-        headers: {
+async function signup(email, username, password, signupChange) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/signup',
+    {
+      method: 'POST',
+      headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 'email': email, 'username': username, 'password': password }),
-      }
-    );
-    const json = await response.json();
-    console.log(json);
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: email,
+        username: username,
+        password: password,
+      }),
+    }
+  );
+  const json = await response.json();
+  signupChange(json['response']);
+  console.log(json);
+}
+
+async function login(username, password, loginChange) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/login',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+      }),
+    }
+  );
+  const json = await response.json();
+  loginChange(json['response']);
+  console.log(json);
 }
 
 // Product Page
@@ -87,7 +115,7 @@ function ProductPage({ navigation, route }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.navigate('AccountPage');
+                navigation.navigate('Login');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -137,7 +165,7 @@ function CartPage({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.navigate('AccountPage');
+                navigation.navigate('Login');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -152,17 +180,156 @@ function CartPage({ navigation }) {
   );
 }
 
-// Account Page
-function AccountPage({ navigation }) {
+// Login Page
+function Login({ navigation }) {
+  const [email, emailChange] = useState(''); // State for email
+  const [username, usernameChange] = useState(''); // State for username
+  const [password, passwordChange] = useState(''); // State for password
+  const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
+  const [loginResponse, loginChange] = useState(''); // State for containing the response from the post request to the login endpoint of the API
+
+  // Function for rendering an input bar
+  function inputBarRender(name, confirmation, placeholder, onChange, secure) {
+    return (
+      <>
+        {/*View for creating a space between input components of account login page */}
+        <View style={{ height: height * 0.02, width: '100%' }}></View>
+        {/* Email Input Bar + Label*/}
+        <Text style={styles.inputLabel}>{name}: </Text>
+        <TextInput
+          style={styles.inputBar}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          clearButtonMode="while-editing"
+          secureTextEntry={secure}
+        />
+      </>
+    );
+  }
+
+  function inputCheck() {
+    if (submitPressed) {
+      if (username.length == 0) {
+        return 'No username provided!';
+      } else if (password.length == 0) {
+        return 'No password provided!';
+      }
+      login(username, password, loginChange);
+      submitChange(false);
+    }
+  }
+
+  return (
+    <>
+      {/*View for all components on home page*/}
+      <View style={styles.allViews}>
+        {/*Container for Account page*/}
+        <View style={styles.mainPage}>
+          {/*View for title flexbox*/}
+          <View style={styles.titleContainer}>
+            <Pressable // Pressable for back button
+              onPress={() => {
+                navigation.goBack();
+              }}
+              style={styles.backButton}>
+              <Image source={backArrow} style={styles.backButtonImage} />
+            </Pressable>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image - image is different color to show that user is currently on account page
+              onPress={() => {
+                navigation.navigate('Login');
+              }}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={accountSelected} style={styles.accountImage} />
+            </Pressable>
+          </View>
+          <View style={styles.body}>
+            <Text style={styles.cartAccountTitle}>Login{'\n'}</Text>
+            <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+              Login to see and track your orders!{'\n'}
+            </Text>
+            <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
+              behavior="padding"
+              keyboardVerticalOffset={height * 0.2}
+              style={{ flex: 1 }}>
+              <ScrollView>
+                {inputBarRender(
+                  'Username',
+                  false,
+                  'Enter your username here',
+                  usernameChange,
+                  false
+                )}
+                {inputBarRender(
+                  'Password',
+                  false,
+                  'Enter your password here',
+                  passwordChange,
+                  true
+                )}
+                <Pressable // Pressable for going to signup page
+                  style={{ paddingVertical: 15, width: width * 0.9 }}
+                  onPress={() => {
+                    navigation.replace('SignUp');
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 'bold',
+                      paddingLeft: 2,
+                      color: 'blue',
+                    }}>
+                    Press here to create an account!
+                  </Text>
+                </Pressable>
+                <Text
+                  style={{
+                    fontSize: 19,
+                    fontWeight: 'bold',
+                    paddingLeft: 2,
+                    color: 'red',
+                  }}>
+                  {inputCheck()}
+                  {loginResponse}
+                  {'\n'}
+                </Text>
+                <Pressable // Submit button
+                  style={styles.submitButton}
+                  onPress={() => submitChange(true)}>
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                    SUBMIT
+                  </Text>
+                </Pressable>
+                {/*View for creating a space between submit button and bottom of scrollview */}
+                <View style={{ height: height * 0.04, width: '100%' }}></View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        </View>
+      </View>
+    </>
+  );
+}
+
+// Sign Up Page
+function SignUp({ navigation }) {
   const [email, emailChange] = useState(''); // State for email
   const [confEmail, confEmailChange] = useState(''); // State for confirm email
   const [username, usernameChange] = useState(''); // State for username
   const [password, passwordChange] = useState(''); // State for password
   const [confPassword, confPasswordChange] = useState(''); // State for confirm password
   const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
+  const [signUpResponse, signUpChange] = useState(''); // State for containing the response from the post request to the signup endpoint of the API
 
   // Function for rendering an input bar
-  function inputBarRender(name, confirmation, placeholder, onChange) {
+  function inputBarRender(name, confirmation, placeholder, onChange, secure) {
     // If the input bar is not a confirmation input (either an email or password)
     if (!confirmation) {
       return (
@@ -176,11 +343,12 @@ function AccountPage({ navigation }) {
             onChangeText={onChange}
             placeholder={placeholder}
             clearButtonMode="while-editing"
+            secureTextEntry={secure}
           />
         </>
       );
     }
-    // Else if the input bar is of confirmatoin input
+    // Else if the input bar is of confirmation input
     else if (confirmation) {
       return (
         <>
@@ -193,6 +361,7 @@ function AccountPage({ navigation }) {
             onChangeText={onChange}
             placeholder={placeholder}
             clearButtonMode="while-editing"
+            secureTextEntry={secure}
           />
         </>
       );
@@ -212,7 +381,7 @@ function AccountPage({ navigation }) {
       } else if (confPassword.length == 0) {
         return 'No confirmation password provided!';
       }
-      sendData(email,username,password);
+      signup(email, username, password, signUpChange);
       submitChange(false);
     }
     if (confEmail.length > 0 && confEmail != email) {
@@ -247,58 +416,95 @@ function AccountPage({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image - image is different color to show that user is currently on account page
               onPress={() => {
-                navigation.navigate('AccountPage');
+                navigation.navigate('Login');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={accountSelected} style={styles.accountImage} />
             </Pressable>
           </View>
           <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Account{'\n'}</Text>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', paddingLeft: 2 }}>
+            <Text style={styles.cartAccountTitle}>Sign Up{'\n'}</Text>
+            <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
               Sign up to see and track your orders!{'\n'}
             </Text>
-            {inputBarRender(
-              'Email',
-              false,
-              'Enter your email here',
-              emailChange
-            )}
-            {inputBarRender(
-              'Email',
-              true,
-              'Confirm your email here',
-              confEmailChange
-            )}
-            {inputBarRender(
-              'Username',
-              false,
-              'Enter your username here',
-              usernameChange
-            )}
-            {inputBarRender(
-              'Password',
-              false,
-              'Enter your password here',
-              passwordChange
-            )}
-            {inputBarRender(
-              'Password',
-              true,
-              'Confirm your password here',
-              confPasswordChange
-            )}
-            <Text style={{ fontSize: 18, fontWeight: 'bold', paddingLeft: 2 }}>
-              {'\n'}
-              {inputCheck()}
-            </Text>
-            {/*View for creating a space between input components of account sign-up page */}
-            <View style={{ height: height * 0.02, width: '100%' }}></View>
-            <Pressable // Submit button
-              style={styles.submitButton}
-              onPress={() => submitChange(true)}>
-              <Text style={{ fontSize: 20, fontWeight: 'bold' }}>SUBMIT</Text>
-            </Pressable>
+            <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
+              behavior="padding"
+              keyboardVerticalOffset={height * 0.2}
+              style={{ flex: 1 }}>
+              <ScrollView>
+                {inputBarRender(
+                  'Email',
+                  false,
+                  'Enter your email here',
+                  emailChange,
+                  false
+                )}
+                {inputBarRender(
+                  'Email',
+                  true,
+                  'Confirm your email here',
+                  confEmailChange,
+                  false
+                )}
+                {inputBarRender(
+                  'Username',
+                  false,
+                  'Enter your username here',
+                  usernameChange,
+                  false
+                )}
+                {inputBarRender(
+                  'Password',
+                  false,
+                  'Enter your password here',
+                  passwordChange,
+                  true
+                )}
+                {inputBarRender(
+                  'Password',
+                  true,
+                  'Confirm your password here',
+                  confPasswordChange,
+                  true
+                )}
+                <Pressable // Pressable for going to login page
+                  style={{ paddingVertical: 15, width: width * 0.9 }}
+                  onPress={() => {
+                    navigation.replace('Login');
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 'bold',
+                      paddingLeft: 2,
+                      color: 'blue',
+                    }}>
+                    Press here to login!
+                  </Text>
+                </Pressable>
+                <Text
+                  style={{
+                    fontSize: 19,
+                    fontWeight: 'bold',
+                    paddingLeft: 2,
+                    color: 'red',
+                  }}>
+                  {'\n'}
+                  {inputCheck()}
+                  {signUpResponse}
+                  {'\n'}
+                </Text>
+                <Pressable // Submit button
+                  style={styles.submitButton}
+                  onPress={() => submitChange(true)}>
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                    SUBMIT
+                  </Text>
+                </Pressable>
+                {/*View for creating a space between submit button and bottom of scrollview */}
+                <View style={{ height: height * 0.04, width: '100%' }}></View>
+              </ScrollView>
+            </KeyboardAvoidingView>
           </View>
         </View>
       </View>
@@ -309,6 +515,9 @@ function AccountPage({ navigation }) {
 // Search Response and Categories Page
 function SearchAndCategories({ navigation, route }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
+  const [navigationFromPage, navigationFromPageChange] = useState(
+    route.params.nav
+  ); // State for seeing if navigation list was used in previous page
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
   const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
   const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
@@ -339,7 +548,7 @@ function SearchAndCategories({ navigation, route }) {
       return (
         <>
           <Pressable
-            onPress={() => navigation.replace('Home')}
+            onPress={() => navigation.replace('Home', { nav: true })}
             style={styles.navigationButton}>
             <Text style={styles.navigationButtonText}> {label} </Text>
           </Pressable>
@@ -376,7 +585,10 @@ function SearchAndCategories({ navigation, route }) {
           <>
             <Pressable
               onPress={() =>
-                navigation.replace('SearchAndCategories', { title: label })
+                navigation.replace('SearchAndCategories', {
+                  title: label,
+                  nav: true,
+                })
               }
               style={styles.navigationButton}>
               <Text style={styles.navigationButtonText}> {label} </Text>
@@ -416,13 +628,14 @@ function SearchAndCategories({ navigation, route }) {
         <>
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
-            onPress={() =>
+            onPress={() => {
+              navigation.setOptions({ animation: 'fade' });
               navigation.navigate('ProductPage', {
                 title: title,
                 image: image,
                 price: price,
-              })
-            }>
+              });
+            }}>
             {/*Full Container of product listing*/}
             <View style={styles.listing}>
               {/*Image for listing*/}
@@ -450,7 +663,9 @@ function SearchAndCategories({ navigation, route }) {
   const listingsRender = ({ item }) =>
     listings(item.type, item.title, item.image, item.category, item.price);
 
-  const navAnimation = useRef(new Animated.Value(-190)).current; // Animation for navigation list (uses its margin left value for appearance)
+  const navAnimation = useRef(
+    new Animated.Value(navigationFromPage ? 0 : -190)
+  ).current; // Animation for navigation list (uses its margin left value for appearance)
 
   const enter = () => {
     // Entering animation
@@ -482,6 +697,7 @@ function SearchAndCategories({ navigation, route }) {
           renderItem={navigationButtonRender}
         />
       </Animated.View>
+
       {/*View for all components on Search/Categories page*/}
       <View
         opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
@@ -502,6 +718,7 @@ function SearchAndCategories({ navigation, route }) {
             <Pressable // Pressable for navigation opener
               onPress={() => {
                 enter(); // Start animation for nav list appearance
+                navigationFromPageChange(false); // Set to false to change margin for nav list to be correct
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
@@ -510,6 +727,7 @@ function SearchAndCategories({ navigation, route }) {
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
+                navigation.setOptions({ animation: 'fade' });
                 navigation.navigate('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
@@ -517,7 +735,8 @@ function SearchAndCategories({ navigation, route }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.navigate('AccountPage');
+                navigation.setOptions({ animation: 'fade' });
+                navigation.navigate('Login');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -532,7 +751,10 @@ function SearchAndCategories({ navigation, route }) {
               placeholder="Search for a product here!"
               value={search}
               onSubmitEditing={() =>
-                navigation.replace('SearchAndCategories', { title: search })
+                navigation.replace('SearchAndCategories', {
+                  title: search,
+                  nav: false,
+                })
               }
               clearButtonMode="while-editing"
             />
@@ -544,13 +766,18 @@ function SearchAndCategories({ navigation, route }) {
           </View>
         </View>
       </View>
+      {/* If statement for making sure nav list exit animation is played AFTER product info is loaded to keep animation clean */}
+      {navigationFromPage && productsArray.length != 0 ? exit() : null}
     </>
   );
 }
 
 // Home Page
-function Home({ navigation }) {
+function Home({ navigation, route }) {
   const [navigationView, navigationChange] = useState(false); // State for checking if navigation-opening button (three lined) is pressed
+  const [navigationFromPage, navigationFromPageChange] = useState(
+    route.params.nav
+  ); // State for seeing if navigation list was used in previous page
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
   const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
   const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
@@ -604,7 +831,10 @@ function Home({ navigation }) {
         <>
           <Pressable
             onPress={() =>
-              navigation.replace('SearchAndCategories', { title: label })
+              navigation.replace('SearchAndCategories', {
+                title: label,
+                nav: true,
+              })
             }
             style={styles.navigationButton}>
             <Text style={styles.navigationButtonText}> {label} </Text>
@@ -637,13 +867,14 @@ function Home({ navigation }) {
         <>
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
-            onPress={() =>
+            onPress={() => {
+              navigation.setOptions({ animation: 'fade' });
               navigation.navigate('ProductPage', {
                 title: title,
                 image: image,
                 price: price,
-              })
-            }>
+              });
+            }}>
             {/*Full Container of product listing*/}
             <View style={styles.listing}>
               {/*Image for listing*/}
@@ -672,7 +903,9 @@ function Home({ navigation }) {
   const bodyPageRender = ({ item }) =>
     bodyPage(item.type, item.title, item.image, item.price);
 
-  const navAnimation = useRef(new Animated.Value(-190)).current; // Animation for navigation list (uses its margin left value for appearance)
+  const navAnimation = useRef(
+    new Animated.Value(navigationFromPage ? 0 : -190)
+  ).current; // Animation for navigation list (uses its margin left value for appearance)
 
   const enter = () => {
     // Entering animation
@@ -724,6 +957,7 @@ function Home({ navigation }) {
             <Pressable // Pressable for navigation opener
               onPress={() => {
                 enter(); // Start animation for nav list appearance
+                navigationFromPageChange(false); // Set to false to change margin for nav list to be correct
                 navigationChange(!navigationView); // Changes state variable of if the three-lined button is pressed or not
               }}
               style={styles.openNavigationButton}>
@@ -732,6 +966,7 @@ function Home({ navigation }) {
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
+                navigation.setOptions({ animation: 'fade' });
                 navigation.navigate('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
@@ -739,7 +974,8 @@ function Home({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.navigate('AccountPage');
+                navigation.setOptions({ animation: 'fade' });
+                navigation.navigate('Login');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -752,9 +988,13 @@ function Home({ navigation }) {
               style={styles.searchBar}
               onChangeText={searchChange}
               placeholder="Search for a product here!"
-              onSubmitEditing={() =>
-                navigation.replace('SearchAndCategories', { title: search })
-              }
+              onSubmitEditing={() => {
+                navigation.setOptions({ animation: 'fade' });
+                navigation.replace('SearchAndCategories', {
+                  title: search,
+                  nav: false,
+                });
+              }}
               clearButtonMode="while-editing"
             />
           </View>
@@ -765,6 +1005,8 @@ function Home({ navigation }) {
           </View>
         </View>
       </View>
+      {/* If statement for making sure nav list exit animation is played AFTER product info is loaded to keep animation clean */}
+      {navigationFromPage && productsArray.length != 0 ? exit() : null}
     </>
   );
 }
@@ -775,16 +1017,38 @@ export default function App() {
   return (
     // Container to hold all navigators/stacks
     <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="Home" component={Home} />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen
+          name="Home"
+          component={Home}
+          initialParams={{ nav: false }}
+          options={{ animation: 'none' }}
+        />
         <Stack.Screen
           name="SearchAndCategories"
           component={SearchAndCategories}
+          options={{ animation: 'none' }}
         />
-        <Stack.Screen name="ProductPage" component={ProductPage} />
-        <Stack.Screen name="CartPage" component={CartPage} />
-        <Stack.Screen name="AccountPage" component={AccountPage} />
+        <Stack.Screen
+          name="ProductPage"
+          component={ProductPage}
+          options={{ animation: 'fade' }}
+        />
+        <Stack.Screen
+          name="CartPage"
+          component={CartPage}
+          options={{ animation: 'fade' }}
+        />
+        <Stack.Screen
+          name="SignUp"
+          component={SignUp}
+          options={{ animation: 'fade' }}
+        />
+        <Stack.Screen
+          name="Login"
+          component={Login}
+          options={{ animation: 'fade' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -913,8 +1177,8 @@ const styles = StyleSheet.create({
   },
   // Body flexbox container (container for everything below title container)
   body: {
-    flexDirection: 'column',
     flex: 3,
+    flexDirection: 'column',
   },
   // Style for banners
   banners: {
@@ -971,16 +1235,16 @@ const styles = StyleSheet.create({
   },
   // Account Input Lable for text input box
   inputLabel: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     padding: 2,
   },
   // Input Bar below input label
   inputBar: {
     width: '99%',
-    height: 40,
+    height: 45,
     borderWidth: 2,
-    fontSize: 21,
+    fontSize: 25,
     borderRadius: 5,
     padding: 2,
     alignSelf: 'center',
