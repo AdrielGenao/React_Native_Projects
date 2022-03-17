@@ -11,10 +11,11 @@ import {
   Animated,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo png
 import lines from './staticImages/ThreeLines.png'; // Three lines png for navigation opener
@@ -47,6 +48,7 @@ async function getProducts(loadingChanger, productsChanger) {
   }
 }
 
+// Function for sending post information to signup endpoint, and response is held in signUpResponse
 async function signup(email, username, password, signupChange) {
   const response = await fetch(
     'https://adrielcapelli.pythonanywhere.com/signup',
@@ -68,6 +70,7 @@ async function signup(email, username, password, signupChange) {
   console.log(json);
 }
 
+// Function for sending post information to login endpoint, and response is held in loginResponse
 async function login(username, password, loginChange) {
   const response = await fetch(
     'https://adrielcapelli.pythonanywhere.com/login',
@@ -86,6 +89,31 @@ async function login(username, password, loginChange) {
   const json = await response.json();
   loginChange(json['response']);
   console.log(json);
+}
+
+// Function for storing a user that has logged in or signed up
+async function storeUser(username) {
+  await AsyncStorage.setItem('@storage_Key', username);
+}
+
+// Function for getting the current logged in user (used by Login and Account components/pages)
+async function getUser(userChange, loadingChange) {
+  try {
+    let response = await AsyncStorage.getItem('@storage_Key');
+    userChange(response); // Change current user state to the currently logged in user
+  } finally {
+    loadingChange(true); // Changes loading state to true
+  }
+}
+
+// Function for loggin out of any user currently logged in
+async function logout(userChange, loadingChange) {
+  try {
+    AsyncStorage.getAllKeys().then((keys) => AsyncStorage.multiRemove(keys));
+  } finally {
+    userChange(''); // Clear state for current user
+    loadingChange(true); // Changes loading state to true
+  }
 }
 
 // Product Page
@@ -180,45 +208,24 @@ function CartPage({ navigation }) {
   );
 }
 
-// Login Page
-function Login({ navigation }) {
-  const [email, emailChange] = useState(''); // State for email
-  const [username, usernameChange] = useState(''); // State for username
-  const [password, passwordChange] = useState(''); // State for password
-  const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
-  const [loginResponse, loginChange] = useState(''); // State for containing the response from the post request to the login endpoint of the API
+// Account/Logged In Page
+function Account({ navigation }) {
+  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
+  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
 
-  // Function for rendering an input bar
-  function inputBarRender(name, confirmation, placeholder, onChange, secure) {
-    return (
-      <>
-        {/*View for creating a space between input components of account login page */}
-        <View style={{ height: height * 0.02, width: '100%' }}></View>
-        {/* Email Input Bar + Label*/}
-        <Text style={styles.inputLabel}>{name}: </Text>
-        <TextInput
-          style={styles.inputBar}
-          onChangeText={onChange}
-          placeholder={placeholder}
-          clearButtonMode="while-editing"
-          secureTextEntry={secure}
-        />
-      </>
-    );
-  }
+  useEffect(() => {
+    // useEffect used to only get the currentUser, if it exists
+    getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
+  }, []);
 
-  function inputCheck() {
-    if (submitPressed) {
-      if (username.length == 0) {
-        return 'No username provided!';
-      } else if (password.length == 0) {
-        return 'No password provided!';
-      }
-      login(username, password, loginChange);
-      submitChange(false);
+  if (userLoading) {
+    if (currentUser == null || currentUser == '') {
+      // Checking to see if there is no user logged in
+      navigation.replace('Login'); // Go to login page if no user is logged in
     }
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded/
   }
-
+  // Show blank page until account loading is done
   return (
     <>
       {/*View for all components on home page*/}
@@ -244,74 +251,35 @@ function Login({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image - image is different color to show that user is currently on account page
               onPress={() => {
-                navigation.navigate('Login');
+                navigation.replace('Login');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={accountSelected} style={styles.accountImage} />
             </Pressable>
           </View>
-          <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Login{'\n'}</Text>
-            <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-              Login to see and track your orders!{'\n'}
-            </Text>
-            <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
-              behavior="padding"
-              keyboardVerticalOffset={height * 0.2}
-              style={{ flex: 1 }}>
-              <ScrollView>
-                {inputBarRender(
-                  'Username',
-                  false,
-                  'Enter your username here',
-                  usernameChange,
-                  false
-                )}
-                {inputBarRender(
-                  'Password',
-                  false,
-                  'Enter your password here',
-                  passwordChange,
-                  true
-                )}
-                <Pressable // Pressable for going to signup page
-                  style={{ paddingVertical: 15, width: width * 0.9 }}
-                  onPress={() => {
-                    navigation.replace('SignUp');
-                  }}>
-                  <Text
-                    style={{
-                      fontSize: 19,
-                      fontWeight: 'bold',
-                      paddingLeft: 2,
-                      color: 'blue',
-                    }}>
-                    Press here to create an account!
-                  </Text>
-                </Pressable>
-                <Text
-                  style={{
-                    fontSize: 19,
-                    fontWeight: 'bold',
-                    paddingLeft: 2,
-                    color: 'red',
-                  }}>
-                  {inputCheck()}
-                  {loginResponse}
-                  {'\n'}
-                </Text>
-                <Pressable // Submit button
-                  style={styles.submitButton}
-                  onPress={() => submitChange(true)}>
-                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
-                    SUBMIT
-                  </Text>
-                </Pressable>
-                {/*View for creating a space between submit button and bottom of scrollview */}
-                <View style={{ height: height * 0.04, width: '100%' }}></View>
-              </ScrollView>
-            </KeyboardAvoidingView>
-          </View>
+          {currentUser == null || currentUser == '' ? ( // Show activity indicator while user is loading
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              <ActivityIndicator size="large" color="#0000ff" />
+            </View>
+          ) : (
+            // If user does exist - render the regular account page
+            <View style={styles.body}>
+              <Text style={styles.cartAccountTitle}>Account{'\n'}</Text>
+              <Text
+                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                Current User: {currentUser}
+                {'\n'}
+              </Text>
+              <Pressable // Logout button
+                style={styles.submitButton}
+                onPress={() => {
+                  logout(currentUserChange, userLoadingChange),
+                    navigation.replace('Login');
+                }}>
+                <Text style={{ fontSize: 21, fontWeight: 'bold' }}>LOGOUT</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
     </>
@@ -326,6 +294,8 @@ function SignUp({ navigation }) {
   const [password, passwordChange] = useState(''); // State for password
   const [confPassword, confPasswordChange] = useState(''); // State for confirm password
   const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
+  const [errorCheck, errorChange] = useState(false); // State for checking if there are any input errors
+  const [changingScreens, changingScreensChange] = useState(false); // State for checking if screen is navigating to account page
   const [signUpResponse, signUpChange] = useState(''); // State for containing the response from the post request to the signup endpoint of the API
 
   // Function for rendering an input bar
@@ -369,20 +339,46 @@ function SignUp({ navigation }) {
   }
 
   function inputCheck() {
+    // Function for sending input response back to front-end
     if (submitPressed) {
+      // Responses for when submit button is pressed. These also change ErrorCheck to true as at least one error has occurred
       if (email.length == 0) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
         return 'No email provided!';
       } else if (confEmail.length == 0) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
         return 'No confirmation email provided!';
       } else if (username.length == 0) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
         return 'No username provided!';
       } else if (password.length == 0) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
         return 'No password provided!';
       } else if (confPassword.length == 0) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
         return 'No confirmation password provided!';
       }
-      signup(email, username, password, signUpChange);
-      submitChange(false);
+      if (errorCheck) {
+        // If invalid reponse in inputs
+        errorChange(false); // Change to false (as the user has now fixed all input errors by this point)
+        submitChange(false); // Change submit to false to make user have to press submit again - code will run inputCheck() again, but now the data will send since all input data is correct
+      } else if (!errorCheck) {
+        // If no input errors occured
+        signup(email, username, password, signUpChange); // Send input data
+        storeUser(username); // Store the current user to the async storage
+        navigation.replace('Account'); // Navigate to account page as a new user has been created/logged into
+        changingScreensChange(true);  // Set state to true to cover signup page while app is changing to account page
+      }
     }
     if (confEmail.length > 0 && confEmail != email) {
       return 'Emails do not match!';
@@ -416,36 +412,217 @@ function SignUp({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image - image is different color to show that user is currently on account page
               onPress={() => {
-                navigation.navigate('Login');
+                navigation.replace('Login');
+              }}
+              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+              <Image source={accountSelected} style={styles.accountImage} />
+            </Pressable>
+          </View>
+          {changingScreens ? null : (  // Return null while changing to account screen/page to not confuse the user
+            <View style={styles.body}>
+              <Text style={styles.cartAccountTitle}>Sign Up{'\n'}</Text>
+              <Text
+                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                Signup to see and track your orders!
+                {'\n'}
+              </Text>
+              <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
+                behavior="padding"
+                keyboardVerticalOffset={height * 0.2}
+                style={{ flex: 1 }}>
+                <ScrollView>
+                  {inputBarRender(
+                    'Email',
+                    false,
+                    'Enter your email here',
+                    emailChange,
+                    false
+                  )}
+                  {inputBarRender(
+                    'Email',
+                    true,
+                    'Confirm your email here',
+                    confEmailChange,
+                    false
+                  )}
+                  {inputBarRender(
+                    'Username',
+                    false,
+                    'Enter your username here',
+                    usernameChange,
+                    false
+                  )}
+                  {inputBarRender(
+                    'Password',
+                    false,
+                    'Enter your password here',
+                    passwordChange,
+                    true
+                  )}
+                  {inputBarRender(
+                    'Password',
+                    true,
+                    'Confirm your password here',
+                    confPasswordChange,
+                    true
+                  )}
+                  <Pressable // Pressable for going to login page
+                    style={{ paddingVertical: 15, width: width * 0.9 }}
+                    onPress={() => {
+                      navigation.replace('Login');
+                    }}>
+                    <Text
+                      style={{
+                        fontSize: 19,
+                        fontWeight: 'bold',
+                        paddingLeft: 2,
+                        color: 'blue',
+                      }}>
+                      Press here to login!
+                    </Text>
+                  </Pressable>
+                  <Text
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 'bold',
+                      paddingLeft: 2,
+                      color: 'red',
+                    }}>
+                    {'\n'}
+                    {inputCheck()}
+                    {signUpResponse}
+                    {'\n'}
+                  </Text>
+                  <Pressable // Submit button
+                    style={styles.submitButton}
+                    onPress={() => submitChange(true)}>
+                    <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                      SUBMIT
+                    </Text>
+                  </Pressable>
+                  {/*View for creating a space between submit button and bottom of scrollview */}
+                  <View style={{ height: height * 0.04, width: '100%' }}></View>
+                </ScrollView>
+              </KeyboardAvoidingView>
+            </View>
+          )}
+        </View>
+      </View>
+    </>
+  );
+}
+
+// Login Page
+function Login({ navigation }) {
+  const [email, emailChange] = useState(''); // State for email
+  const [username, usernameChange] = useState(''); // State for username
+  const [password, passwordChange] = useState(''); // State for password
+  const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
+  const [errorCheck, errorChange] = useState(false); // State for checking if there are any input errors
+  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
+  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+  const [loginResponse, loginChange] = useState(''); // State for containing the response from the post request to the login endpoint of the API
+
+  // This if statement is used for after the user logs in. The getUser() function is called in the inputCheck() function, therefore chaning userLoading to be true
+  if (userLoading) {
+    // Changing userLoading back to false after currentUser has loaded, or navigating to Account page if a user is logged in
+    if (currentUser != null && currentUser != '') {
+      // Checking to see if a user is logged in
+      navigation.replace('Account'); // Go to main account page if a user is logged in
+    }
+    userLoadingChange(false);
+  }
+
+  // Function for rendering an input bar
+  function inputBarRender(name, confirmation, placeholder, onChange, secure) {
+    return (
+      <>
+        {/*View for creating a space between input components of account login page */}
+        <View style={{ height: height * 0.02, width: '100%' }}></View>
+        {/* Email Input Bar + Label*/}
+        <Text style={styles.inputLabel}>{name}: </Text>
+        <TextInput
+          style={styles.inputBar}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          clearButtonMode="while-editing"
+          secureTextEntry={secure}
+        />
+      </>
+    );
+  }
+
+  function inputCheck() {
+    // Function for sending input response back to front-end
+    if (submitPressed) {
+      // Responses for when submit button is pressed. These also change ErrorCheck to true as at least one error has occurred
+      if (username.length == 0) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
+        return 'No username provided!';
+      } else if (password.length == 0) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
+        return 'No password provided!';
+      }
+      if (errorCheck) {
+        // If invalid reponse in inputs
+        errorChange(false); // Change to false (as the user has now fixed all input errors by this point)
+        submitChange(false); // Change submit to false to make user have to press submit again - code will run inputCheck() again, but now the data will send since all input data is correct
+      } else if (!errorCheck) {
+        // If no input errors occured
+        login(username, password, loginChange); // Send input data
+        storeUser(username); // Store the current user to the async storage
+        getUser(currentUserChange, userLoadingChange); // Called to change the current user and to userLoading, therefore making the page navigate to the Account page
+        submitChange(false);
+      }
+    }
+  }
+
+  return (
+    <>
+      {/*View for all components on homepage*/}
+      <View style={styles.allViews}>
+        {/*Container for Account page*/}
+        <View style={styles.mainPage}>
+          {/*View for title flexbox*/}
+          <View style={styles.titleContainer}>
+            <Pressable // Pressable for back button
+              onPress={() => {
+                navigation.goBack();
+              }}
+              style={styles.backButton}>
+              <Image source={backArrow} style={styles.backButtonImage} />
+            </Pressable>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            <Pressable // Pressable for shopping cart image
+              onPress={() => {
+                navigation.navigate('CartPage');
+              }}
+              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+              <Image source={cart} style={styles.cartImage} />
+            </Pressable>
+            <Pressable // Pressable for account image - image is different color to show that user is currently on login page
+              onPress={() => {
+                navigation.navigate('Signup');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={accountSelected} style={styles.accountImage} />
             </Pressable>
           </View>
           <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Sign Up{'\n'}</Text>
+            <Text style={styles.cartAccountTitle}>Login{'\n'}</Text>
             <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-              Sign up to see and track your orders!{'\n'}
+              Login to see and track your orders!
+              {'\n'}
             </Text>
             <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
               behavior="padding"
               keyboardVerticalOffset={height * 0.2}
               style={{ flex: 1 }}>
               <ScrollView>
-                {inputBarRender(
-                  'Email',
-                  false,
-                  'Enter your email here',
-                  emailChange,
-                  false
-                )}
-                {inputBarRender(
-                  'Email',
-                  true,
-                  'Confirm your email here',
-                  confEmailChange,
-                  false
-                )}
                 {inputBarRender(
                   'Username',
                   false,
@@ -460,17 +637,10 @@ function SignUp({ navigation }) {
                   passwordChange,
                   true
                 )}
-                {inputBarRender(
-                  'Password',
-                  true,
-                  'Confirm your password here',
-                  confPasswordChange,
-                  true
-                )}
-                <Pressable // Pressable for going to login page
+                <Pressable // Pressable for going to signup page
                   style={{ paddingVertical: 15, width: width * 0.9 }}
                   onPress={() => {
-                    navigation.replace('Login');
+                    navigation.navigate('SignUp');
                   }}>
                   <Text
                     style={{
@@ -479,7 +649,7 @@ function SignUp({ navigation }) {
                       paddingLeft: 2,
                       color: 'blue',
                     }}>
-                    Press here to login!
+                    Press here to create an account!
                   </Text>
                 </Pressable>
                 <Text
@@ -489,9 +659,8 @@ function SignUp({ navigation }) {
                     paddingLeft: 2,
                     color: 'red',
                   }}>
-                  {'\n'}
                   {inputCheck()}
-                  {signUpResponse}
+                  {loginResponse}
                   {'\n'}
                 </Text>
                 <Pressable // Submit button
@@ -527,6 +696,7 @@ function SearchAndCategories({ navigation, route }) {
     // useEffect used to only call getProducts function once: when page is rendered
     getProducts(loadingChange, productsReturnChange); // Called to get products from database, and saves it to products State variable
   }, []);
+
   if (loading) {
     // Method for putting database products into an array of dictionaries (if statement makes sure it loads only after get request is complete)
     for (var i = 0; i < productsReturn.length; i++) {
@@ -736,7 +906,7 @@ function SearchAndCategories({ navigation, route }) {
             <Pressable // Pressable for account image
               onPress={() => {
                 navigation.setOptions({ animation: 'fade' });
-                navigation.navigate('Login');
+                navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -779,6 +949,7 @@ function Home({ navigation, route }) {
     route.params.nav
   ); // State for seeing if navigation list was used in previous page
   const [loading, loadingChange] = useState(false); // State for checking if products have loaded into products State variable
+  const [currentUser, currentUserChange] = useState(''); // State for checking if there is a user logged in
   const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
   const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
   const [search, searchChange] = useState(); // State for search query
@@ -975,7 +1146,7 @@ function Home({ navigation, route }) {
             <Pressable // Pressable for account image
               onPress={() => {
                 navigation.setOptions({ animation: 'fade' });
-                navigation.navigate('Login');
+                navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -1047,6 +1218,11 @@ export default function App() {
         <Stack.Screen
           name="Login"
           component={Login}
+          options={{ animation: 'fade' }}
+        />
+        <Stack.Screen
+          name="Account"
+          component={Account}
           options={{ animation: 'fade' }}
         />
       </Stack.Navigator>
