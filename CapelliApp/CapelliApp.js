@@ -35,7 +35,7 @@ var navData = [
   { label: 'Shavers' },
 ];
 
-// Function to call to get product data (takes setState functions as parameters)
+// Function to call Products endpoint to get product data (takes setState functions as parameters)
 async function getProducts(loadingChanger, productsChanger) {
   try {
     const response = await fetch(
@@ -106,7 +106,7 @@ async function getUser(userChange, loadingChange) {
   }
 }
 
-// Function for loggin out of any user currently logged in
+// Function for logging out of any user currently logged in
 async function logout(userChange, loadingChange) {
   try {
     AsyncStorage.getAllKeys().then((keys) => AsyncStorage.multiRemove(keys));
@@ -116,8 +116,63 @@ async function logout(userChange, loadingChange) {
   }
 }
 
+// Function for sending newly added item to account cart
+async function addToCart(username, productTitle, productImage, productPrice) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/addToCart',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        productTitle: productTitle,
+        productImage: productImage,
+        productPrice: productPrice,
+      }),
+    }
+  );
+  const json = await response.json();
+  console.log(json);
+}
+
+// Function for getting cart of currently logged in user
+async function getCart(username, cartChange, loadingChange) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/getCart',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    }
+  );
+  const json = await response.json();
+  cartChange(json['cart']);
+  console.log(json);
+  loadingChange(true);
+}
+
 // Product Page
 function ProductPage({ navigation, route }) {
+  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
+  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+
+  useEffect(() => {
+    // useEffect used to only get the currentUser, if it exists
+    getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
+  }, []);
+
+  if (userLoading) {
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded/
+  }
+
   return (
     <>
       {/*View for all components on home page*/}
@@ -143,7 +198,7 @@ function ProductPage({ navigation, route }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.navigate('Login');
+                navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -159,6 +214,22 @@ function ProductPage({ navigation, route }) {
             {/*Title text for Product page */}
             <Text style={styles.productTitleText}>{route.params.title}</Text>
             <Text style={styles.productTitleText}>${route.params.price}</Text>
+            <Pressable // Add to cart button
+              style={styles.addToCartButton}
+              onPress={() =>
+                currentUser == null || currentUser == ''
+                  ? navigation.replace('Login')
+                  : addToCart(
+                      currentUser,
+                      route.params.title,
+                      route.params.image,
+                      route.params.price
+                    )
+              }>
+              <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                Add to cart
+              </Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -168,6 +239,74 @@ function ProductPage({ navigation, route }) {
 
 // Cart Page
 function CartPage({ navigation }) {
+  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
+  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+  const [cartResponse, cartResponseChange] = useState([]); // State for holding response from getCart endpoint
+  const [cart, cartChange] = useState([]); // State for holding actual cart of products from user to display using FlatList
+  const [cartLoading, cartLoadingChange] = useState(false); // State for checking if getCart async function has finished
+
+  useEffect(() => {
+    // useEffect used to only get the currentUser, if it exists
+    getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
+  }, []);
+
+  if (userLoading) {
+    getCart(currentUser, cartResponseChange, cartLoadingChange);
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded
+  }
+
+  if (cartLoading) {
+    if (cartResponse[0] != 'No Cart') {
+      // Method for making array of dictionaries for each product in user's cart
+      for (var i = 0; i < cartResponse.length; i++) {
+        var cartRow = cartResponse[i].split(',');
+        var productRow = {};
+        productRow['title'] = cartRow[0];
+        productRow['image'] = cartRow[1];
+        productRow['price'] = cartRow[2];
+        cart.push(productRow);
+      }
+      console.log(cart);
+      cartLoadingChange(false);
+    }
+  }
+
+  function listings(title, image, price) {
+    // Function for rendering listings of products in user's cart
+    return (
+      <>
+        {/*Pressable Container to make the listing a pressable to go to its product page*/}
+        <Pressable
+          onPress={() => {
+            navigation.setOptions({ animation: 'fade' });
+            navigation.navigate('ProductPage', {
+              title: title,
+              image: image,
+              price: price,
+            });
+          }}>
+          {/*Full Container of product listing*/}
+          <View style={styles.listing}>
+            {/*Image for listing*/}
+            <Image style={styles.productListingImage} source={{ uri: image }} />
+            {/*View for text of listing*/}
+            <View style={styles.productText}>
+              {/*Actual text*/}
+              <Text style={styles.productTextTitle}>{title}</Text>
+              <Text style={styles.productTextTitle}>${price}</Text>
+            </View>
+          </View>
+        </Pressable>
+        {/*View for creating a space between components of body page */}
+        <View style={{ height: height * 0.01, width: '100%' }}></View>
+      </>
+    );
+  }
+
+  // Actual rendering of product listings
+  const listingsRender = ({ item }) =>
+    listings(item.title, item.image, item.price);
+
   return (
     <>
       {/*View for all components on home page*/}
@@ -193,14 +332,26 @@ function CartPage({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.navigate('Login');
+                navigation.replace('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
             </Pressable>
           </View>
+          {/*View for body flexbox*/}
           <View style={styles.body}>
             <Text style={styles.cartAccountTitle}>Cart</Text>
+            {/*FlatList of product listings in user's cart once cart has loaded*/}
+            {cart.length != 0 ? (
+              <FlatList data={cart} renderItem={listingsRender} />
+            ) : (
+              <Text
+                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                {'\n'}
+                Nothing in Cart
+                {'\n'}
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -223,9 +374,9 @@ function Account({ navigation }) {
       // Checking to see if there is no user logged in
       navigation.replace('Login'); // Go to login page if no user is logged in
     }
-    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded/
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded
   }
-  // Show blank page until account loading is done
+
   return (
     <>
       {/*View for all components on home page*/}
@@ -251,7 +402,7 @@ function Account({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image - image is different color to show that user is currently on account page
               onPress={() => {
-                navigation.replace('Login');
+                navigation.replace('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={accountSelected} style={styles.accountImage} />
@@ -367,7 +518,18 @@ function SignUp({ navigation }) {
           errorChange(true);
         }
         return 'No confirmation password provided!';
+      } else if (confEmail.length > 0 && confEmail != email) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
+        return 'Emails do not match!';
+      } else if (confPassword.length > 0 && confPassword != password) {
+        if (errorCheck != true) {
+          errorChange(true);
+        }
+        return 'Password do not match!';
       }
+
       if (errorCheck) {
         // If invalid reponse in inputs
         errorChange(false); // Change to false (as the user has now fixed all input errors by this point)
@@ -377,13 +539,15 @@ function SignUp({ navigation }) {
         signup(email, username, password, signUpChange); // Send input data
         storeUser(username); // Store the current user to the async storage
         navigation.replace('Account'); // Navigate to account page as a new user has been created/logged into
-        changingScreensChange(true);  // Set state to true to cover signup page while app is changing to account page
+        changingScreensChange(true); // Set state to true to cover signup page while app is changing to account page
+        submitChange(false);
       }
-    }
-    if (confEmail.length > 0 && confEmail != email) {
-      return 'Emails do not match!';
-    } else if (confPassword.length > 0 && confPassword != password) {
-      return 'Password do not match!';
+    } else if (!submitPressed) {
+      if (confEmail.length > 0 && confEmail != email) {
+        return 'Emails do not match!';
+      } else if (confPassword.length > 0 && confPassword != password) {
+        return 'Password do not match!';
+      }
     }
   }
 
@@ -397,7 +561,7 @@ function SignUp({ navigation }) {
           <View style={styles.titleContainer}>
             <Pressable // Pressable for back button
               onPress={() => {
-                navigation.goBack();
+                navigation.replace('Login');
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
@@ -418,7 +582,7 @@ function SignUp({ navigation }) {
               <Image source={accountSelected} style={styles.accountImage} />
             </Pressable>
           </View>
-          {changingScreens ? null : (  // Return null while changing to account screen/page to not confuse the user
+          {changingScreens ? null : ( // Return null while changing to account screen/page to not confuse the user
             <View style={styles.body}>
               <Text style={styles.cartAccountTitle}>Sign Up{'\n'}</Text>
               <Text
@@ -519,18 +683,16 @@ function Login({ navigation }) {
   const [password, passwordChange] = useState(''); // State for password
   const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
   const [errorCheck, errorChange] = useState(false); // State for checking if there are any input errors
-  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
-  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
-  const [loginResponse, loginChange] = useState(''); // State for containing the response from the post request to the login endpoint of the API
+  const [loginResponse, loginChange] = useState(''); // State for containing the response from the post request to the login endpoint of the API. Will return either an error or the username of the logged in account
 
-  // This if statement is used for after the user logs in. The getUser() function is called in the inputCheck() function, therefore chaning userLoading to be true
-  if (userLoading) {
-    // Changing userLoading back to false after currentUser has loaded, or navigating to Account page if a user is logged in
-    if (currentUser != null && currentUser != '') {
-      // Checking to see if a user is logged in
-      navigation.replace('Account'); // Go to main account page if a user is logged in
-    }
-    userLoadingChange(false);
+  if (
+    loginResponse != null &&
+    loginResponse != '' &&
+    loginResponse != 'User not found!'
+  ) {
+    // If loginResponse successfully has a username stored in database
+    storeUser(loginResponse); // Set current user to the one that has just logged in
+    navigation.replace('Account'); // Navigate to Account page
   }
 
   // Function for rendering an input bar
@@ -574,8 +736,6 @@ function Login({ navigation }) {
       } else if (!errorCheck) {
         // If no input errors occured
         login(username, password, loginChange); // Send input data
-        storeUser(username); // Store the current user to the async storage
-        getUser(currentUserChange, userLoadingChange); // Called to change the current user and to userLoading, therefore making the page navigate to the Account page
         submitChange(false);
       }
     }
@@ -599,14 +759,14 @@ function Login({ navigation }) {
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
-                navigation.navigate('CartPage');
+                navigation.replace('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
               <Image source={cart} style={styles.cartImage} />
             </Pressable>
             <Pressable // Pressable for account image - image is different color to show that user is currently on login page
               onPress={() => {
-                navigation.navigate('Signup');
+                navigation.replace('Signup');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={accountSelected} style={styles.accountImage} />
@@ -660,7 +820,9 @@ function Login({ navigation }) {
                     color: 'red',
                   }}>
                   {inputCheck()}
-                  {loginResponse}
+                  {loginResponse == 'User not found!'
+                    ? 'User not found!'
+                    : null}
                   {'\n'}
                 </Text>
                 <Pressable // Submit button
@@ -867,7 +1029,6 @@ function SearchAndCategories({ navigation, route }) {
           renderItem={navigationButtonRender}
         />
       </Animated.View>
-
       {/*View for all components on Search/Categories page*/}
       <View
         opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
@@ -1068,9 +1229,7 @@ function Home({ navigation, route }) {
     }
   }
 
-  {
-    /*Actual rendering of home page listings by calling on function*/
-  }
+  // Actual rendering of home page listings by calling on function
   const bodyPageRender = ({ item }) =>
     bodyPage(item.type, item.title, item.image, item.price);
 
@@ -1425,7 +1584,7 @@ const styles = StyleSheet.create({
     padding: 2,
     alignSelf: 'center',
   },
-  // Submit button for account sign-up
+  // Submit button for account sign-up + login
   submitButton: {
     width: '45%',
     height: height * 0.06,
@@ -1433,5 +1592,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#05acbe',
+    borderRadius: 7.5,
+  },
+  // Add to cart pressable
+  addToCartButton: {
+    width: '70%',
+    height: height * 0.06,
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#05acbe',
+    borderRadius: 7.5,
   },
 });
