@@ -12,6 +12,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -117,7 +118,13 @@ async function logout(userChange, loadingChange) {
 }
 
 // Function for sending newly added item to account cart
-async function addToCart(username, productTitle, productImage, productPrice) {
+async function addToCart(
+  username,
+  productTitle,
+  productImage,
+  productPrice,
+  quantity
+) {
   const response = await fetch(
     'https://adrielcapelli.pythonanywhere.com/addToCart',
     {
@@ -131,6 +138,7 @@ async function addToCart(username, productTitle, productImage, productPrice) {
         productTitle: productTitle,
         productImage: productImage,
         productPrice: productPrice,
+        quantity: quantity,
       }),
     }
   );
@@ -162,16 +170,14 @@ async function getCart(username, cartChange, loadingChange) {
 // Product Page
 function ProductPage({ navigation, route }) {
   const [currentUser, currentUserChange] = useState(''); // State for holding the current user
-  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+  const [userLoaded, userLoadedChange] = useState(false); // State for checking if current user async function has finished, and a user has been checked for
+  const [addedToCart, addedToCartChange] = useState(false); // State for checking that product has been added to cart
+  const [quantity, quantityChange] = useState(0); // State for quantity
 
   useEffect(() => {
     // useEffect used to only get the currentUser, if it exists
-    getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
+    getUser(currentUserChange, userLoadedChange); // Called to get the current user that's logged in, if any user is logged in at all
   }, []);
-
-  if (userLoading) {
-    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded/
-  }
 
   return (
     <>
@@ -206,30 +212,72 @@ function ProductPage({ navigation, route }) {
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
-            {/* Image of the product */}
-            <Image
-              style={styles.productPageImage}
-              source={{ uri: route.params.image }}
-            />
-            {/*Title text for Product page */}
-            <Text style={styles.productTitleText}>{route.params.title}</Text>
-            <Text style={styles.productTitleText}>${route.params.price}</Text>
-            <Pressable // Add to cart button
-              style={styles.addToCartButton}
-              onPress={() =>
-                currentUser == null || currentUser == ''
-                  ? navigation.replace('Login')
-                  : addToCart(
-                      currentUser,
-                      route.params.title,
-                      route.params.image,
-                      route.params.price
-                    )
-              }>
-              <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
-                Add to cart
-              </Text>
-            </Pressable>
+            <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
+              behavior="height"
+              keyboardVerticalOffset={height * 0.215}
+              style={{ flex: 1 }}>
+              <ScrollView>
+                {/* Image of the product */}
+                <Image
+                  style={styles.productPageImage}
+                  source={{ uri: route.params.image }}
+                />
+                {/* Title text for Product page */}
+                <Text style={styles.productTitleText}>
+                  {route.params.title}
+                </Text>
+                <Text style={styles.productTitleText}>
+                  ${route.params.price}
+                </Text>
+                {/* View for Quantity Section for Product Page*/}
+                <View
+                  style={{
+                    paddingLeft: 5,
+                    marginLeft: width * 0.03,
+                    flexDirection: 'row',
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 'bold',
+                    }}>
+                    Quantity:{'  '}
+                  </Text>
+                  <TextInput
+                    style={styles.productQuantityInput}
+                    onChangeText={quantityChange}
+                    returnKeyType="done"
+                    keyboardType="number-pad"
+                    placeholder="Qty"
+                    maxLength={2}
+                    defaultValue="1"
+                  />
+                </View>
+                {/*View for creating a space quantity and Add to Cart button */}
+                <View style={{ height: height * 0.02, width: '100%' }}></View>
+                <Pressable // Add to cart button
+                  style={styles.addToCartButton}
+                  onPress={() =>
+                    addedToCart
+                      ? (navigation.replace('CartPage'),
+                        addedToCartChange(false))
+                      : (currentUser == null || currentUser == '') && userLoaded
+                      ? navigation.replace('Login')
+                      : (addToCart(
+                          currentUser,
+                          route.params.title,
+                          route.params.image,
+                          route.params.price,
+                          quantity == null || quantity == '' ? 1 : quantity
+                        ),
+                        addedToCartChange(true))
+                  }>
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                    {addedToCart ? 'View in Cart' : 'Add to cart'}
+                  </Text>
+                </Pressable>
+              </ScrollView>
+            </KeyboardAvoidingView>
           </View>
         </View>
       </View>
@@ -241,6 +289,7 @@ function ProductPage({ navigation, route }) {
 function CartPage({ navigation }) {
   const [currentUser, currentUserChange] = useState(''); // State for holding the current user
   const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+  const [userLoaded, userLoadedChange] = useState(false); // State for checking if a user is loaded into the currentUser state
   const [cartResponse, cartResponseChange] = useState([]); // State for holding response from getCart endpoint
   const [cart, cartChange] = useState([]); // State for holding actual cart of products from user to display using FlatList
   const [cartLoading, cartLoadingChange] = useState(false); // State for checking if getCart async function has finished
@@ -251,22 +300,40 @@ function CartPage({ navigation }) {
   }, []);
 
   if (userLoading) {
-    getCart(currentUser, cartResponseChange, cartLoadingChange);
-    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded
+    if (currentUser != null && currentUser != '') {
+      getCart(currentUser, cartResponseChange, cartLoadingChange);
+    }
+    userLoadedChange(true); // Change userLoaded to true to show that a user is currently logged in. Used for displaying if a user is logged in or not for the frontend
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded. Used to not repeat this if statement
+  }
+
+  function changeQuantity(amount, cartIndex) {
+    console.log(amount);
+    console.log('cartIndex' + cartIndex);
+  }
+
+  // Function for getting the quantity of the item in the cart with title passed in as parameter
+  function checkQuantity(title) {
+    for (let i = 0; i < cart.length; i++) {
+      if (title == cart[i]['title']) {
+        return cart[i]['quantity'].toString();
+      }
+    }
+    return '1'; // Return 1 as default quantity
   }
 
   if (cartLoading) {
     if (cartResponse[0] != 'No Cart') {
       // Method for making array of dictionaries for each product in user's cart
       for (var i = 0; i < cartResponse.length; i++) {
-        var cartRow = cartResponse[i].split(',');
+        var cartRow = cartResponse[i].split('~');
         var productRow = {};
         productRow['title'] = cartRow[0];
         productRow['image'] = cartRow[1];
-        productRow['price'] = cartRow[2];
+        productRow['price'] = parseFloat(cartRow[2]);
+        productRow['quantity'] = parseInt(cartRow[3]);
         cart.push(productRow);
       }
-      console.log(cart);
       cartLoadingChange(false);
     }
   }
@@ -277,13 +344,21 @@ function CartPage({ navigation }) {
       <>
         {/*Pressable Container to make the listing a pressable to go to its product page*/}
         <Pressable
-          onPress={() => {
-            navigation.setOptions({ animation: 'fade' });
-            navigation.navigate('ProductPage', {
-              title: title,
-              image: image,
-              price: price,
-            });
+          onPress={(PressEvent) => {
+            if (
+              // This if statement is only for webview, as the clicking event differs from the onpress callback. The target [object HTMLInputElement] is the textInput element on the listing
+              Platform.OS == 'web' &&
+              PressEvent.target == '[object HTMLInputElement]'
+            ) {
+              return null;
+            } else {
+              navigation.setOptions({ animation: 'fade' });
+              navigation.navigate('ProductPage', {
+                title: title,
+                image: image,
+                price: price,
+              });
+            }
           }}>
           {/*Full Container of product listing*/}
           <View style={styles.listing}>
@@ -294,6 +369,16 @@ function CartPage({ navigation }) {
               {/*Actual text*/}
               <Text style={styles.productTextTitle}>{title}</Text>
               <Text style={styles.productTextTitle}>${price}</Text>
+              <Text style={styles.productTextTitle}>Quantity:</Text>
+              <TextInput
+                style={styles.cartQuantityInput}
+                onChangeText={(text) => changeQuantity(text, title)}
+                returnKeyType="done"
+                keyboardType="number-pad"
+                placeholder="Qty"
+                maxLength={2}
+                defaultValue={checkQuantity(title)}
+              />
             </View>
           </View>
         </Pressable>
@@ -332,7 +417,7 @@ function CartPage({ navigation }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.replace('Account');
+                navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -340,17 +425,42 @@ function CartPage({ navigation }) {
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Cart</Text>
-            {/*FlatList of product listings in user's cart once cart has loaded*/}
-            {cart.length != 0 ? (
-              <FlatList data={cart} renderItem={listingsRender} />
+            <Text style={styles.cartAccountTitle}>Cart{'\n'}</Text>
+            {(currentUser == null || currentUser == '') && userLoaded ? (
+              <>
+                <Text
+                  style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                  No User Logged in!
+                  {'\n'}
+                </Text>
+                <Pressable // Logout button
+                  style={styles.submitButton}
+                  onPress={() => {
+                    logout(currentUserChange, userLoadingChange),
+                      navigation.replace('Login');
+                  }}>
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                    LOGIN
+                  </Text>
+                </Pressable>
+              </>
+            ) : cartResponse.length > 0 ? (
+              cart.length > 0 ? (
+                //FlatList of product listings in user's cart once cart has loaded
+                <FlatList data={cart} renderItem={listingsRender} />
+              ) : (
+                <Text
+                  style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                  {'\n'}
+                  Nothing in Cart
+                  {'\n'}
+                </Text>
+              )
             ) : (
-              <Text
-                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-                {'\n'}
-                Nothing in Cart
-                {'\n'}
-              </Text>
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                {/* Acitivty indicator while the cart response or cart creation is loading */}
+                <ActivityIndicator size="large" color="#0000ff" />
+              </View>
             )}
           </View>
         </View>
@@ -360,7 +470,7 @@ function CartPage({ navigation }) {
 }
 
 // Account/Logged In Page
-function Account({ navigation }) {
+function Account({ navigation, route }) {
   const [currentUser, currentUserChange] = useState(''); // State for holding the current user
   const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
 
@@ -387,7 +497,7 @@ function Account({ navigation }) {
           <View style={styles.titleContainer}>
             <Pressable // Pressable for back button
               onPress={() => {
-                navigation.goBack();
+                navigation.popToTop();
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
@@ -413,7 +523,7 @@ function Account({ navigation }) {
               <ActivityIndicator size="large" color="#0000ff" />
             </View>
           ) : (
-            // If user does exist - render the regular account page
+            // If user does exist or is logged in - render the regular account page
             <View style={styles.body}>
               <Text style={styles.cartAccountTitle}>Account{'\n'}</Text>
               <Text
@@ -450,7 +560,14 @@ function SignUp({ navigation }) {
   const [signUpResponse, signUpChange] = useState(''); // State for containing the response from the post request to the signup endpoint of the API
 
   // Function for rendering an input bar
-  function inputBarRender(name, confirmation, placeholder, onChange, secure) {
+  function inputBarRender(
+    name,
+    confirmation,
+    placeholder,
+    onChange,
+    secure,
+    maximum
+  ) {
     // If the input bar is not a confirmation input (either an email or password)
     if (!confirmation) {
       return (
@@ -465,6 +582,8 @@ function SignUp({ navigation }) {
             placeholder={placeholder}
             clearButtonMode="while-editing"
             secureTextEntry={secure}
+            maxLength={maximum}
+            returnKeyType="done"
           />
         </>
       );
@@ -483,10 +602,20 @@ function SignUp({ navigation }) {
             placeholder={placeholder}
             clearButtonMode="while-editing"
             secureTextEntry={secure}
+            maxLength={maximum}
+            returnKeyType="done"
           />
         </>
       );
     }
+  }
+
+  if (signUpResponse == 'User created!') {
+    // If user has been created on backend
+    storeUser(username); // Store the current user to the async storage
+    navigation.replace('Account'); // Navigate to account page as a new user has been created/logged into
+    changingScreensChange(true); // Set state to true to cover signup page while app is changing to account page
+    signUpChange(''); // Change signUpResponse to be empty to prevent infinite loop of renders
   }
 
   function inputCheck() {
@@ -537,9 +666,6 @@ function SignUp({ navigation }) {
       } else if (!errorCheck) {
         // If no input errors occured
         signup(email, username, password, signUpChange); // Send input data
-        storeUser(username); // Store the current user to the async storage
-        navigation.replace('Account'); // Navigate to account page as a new user has been created/logged into
-        changingScreensChange(true); // Set state to true to cover signup page while app is changing to account page
         submitChange(false);
       }
     } else if (!submitPressed) {
@@ -561,7 +687,7 @@ function SignUp({ navigation }) {
           <View style={styles.titleContainer}>
             <Pressable // Pressable for back button
               onPress={() => {
-                navigation.replace('Login');
+                navigation.pop();
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
@@ -612,23 +738,26 @@ function SignUp({ navigation }) {
                   {inputBarRender(
                     'Username',
                     false,
-                    'Enter your username here',
+                    'Maximum 15 Characters',
                     usernameChange,
-                    false
+                    false,
+                    15
                   )}
                   {inputBarRender(
                     'Password',
                     false,
-                    'Enter your password here',
+                    'Maximum 15 Characters',
                     passwordChange,
-                    true
+                    true,
+                    15
                   )}
                   {inputBarRender(
                     'Password',
                     true,
-                    'Confirm your password here',
+                    'Maximum 15 Characters',
                     confPasswordChange,
-                    true
+                    true,
+                    15
                   )}
                   <Pressable // Pressable for going to login page
                     style={{ paddingVertical: 15, width: width * 0.9 }}
@@ -654,6 +783,7 @@ function SignUp({ navigation }) {
                     }}>
                     {'\n'}
                     {inputCheck()}
+                    {'\n'}
                     {signUpResponse}
                     {'\n'}
                   </Text>
@@ -685,11 +815,7 @@ function Login({ navigation }) {
   const [errorCheck, errorChange] = useState(false); // State for checking if there are any input errors
   const [loginResponse, loginChange] = useState(''); // State for containing the response from the post request to the login endpoint of the API. Will return either an error or the username of the logged in account
 
-  if (
-    loginResponse != null &&
-    loginResponse != '' &&
-    loginResponse != 'User not found!'
-  ) {
+  if (loginResponse == username && loginResponse.length > 0) {
     // If loginResponse successfully has a username stored in database
     storeUser(loginResponse); // Set current user to the one that has just logged in
     navigation.replace('Account'); // Navigate to Account page
@@ -709,6 +835,7 @@ function Login({ navigation }) {
           placeholder={placeholder}
           clearButtonMode="while-editing"
           secureTextEntry={secure}
+          returnKeyType="done"
         />
       </>
     );
@@ -1080,6 +1207,7 @@ function SearchAndCategories({ navigation, route }) {
               style={styles.searchBar}
               onChangeText={searchChange}
               placeholder="Search for a product here!"
+              returnKeyType="search"
               value={search}
               onSubmitEditing={() =>
                 navigation.replace('SearchAndCategories', {
@@ -1113,7 +1241,7 @@ function Home({ navigation, route }) {
   const [currentUser, currentUserChange] = useState(''); // State for checking if there is a user logged in
   const [productsReturn, productsReturnChange] = useState([]); // State for retrieving the fetched/called database values
   const [productsArray, productsArraychange] = useState([]); // State that actually holds product data from database, using the fetched array (productsReturn)
-  const [search, searchChange] = useState(); // State for search query
+  const [search, searchChange] = useState(''); // State for search query
 
   useEffect(() => {
     // useEffect used to only call getProducts function once: when page is rendered
@@ -1320,12 +1448,15 @@ function Home({ navigation, route }) {
               placeholder="Search for a product here!"
               onSubmitEditing={() => {
                 navigation.setOptions({ animation: 'fade' });
-                navigation.replace('SearchAndCategories', {
-                  title: search,
-                  nav: false,
-                });
+                if (search.length != 0) {
+                  navigation.replace('SearchAndCategories', {
+                    title: search,
+                    nav: false,
+                  });
+                }
               }}
               clearButtonMode="while-editing"
+              returnKeyType="search"
             />
           </View>
           {/* View for body flexbox */}
@@ -1550,7 +1681,7 @@ const styles = StyleSheet.create({
   // Style for the image of the product page
   productPageImage: {
     width: width,
-    height: '60%',
+    height: height * 0.45,
     resizeMode: 'stretch',
     borderRadius: 20,
   },
@@ -1603,5 +1734,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#05acbe',
     borderRadius: 7.5,
+  },
+  cartQuantityInput: {
+    width: '25%',
+    height: '25%',
+    fontSize: 20,
+    borderWidth: 2,
+    borderRadius: 5,
+  },
+  productQuantityInput: {
+    width: '12.5%',
+    height: '100%',
+    fontSize: 22,
+    borderWidth: 2,
+    borderRadius: 5,
   },
 });
