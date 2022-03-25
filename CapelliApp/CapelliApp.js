@@ -20,11 +20,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo png
 import lines from './staticImages/ThreeLines.png'; // Three lines png for navigation opener
-import backArrow from './staticImages/BackArrow.png'; // Back Arrow image for product and account/cart pages
 import cart from './staticImages/CartImage.png'; // Cart image for items in cart page
 import account from './staticImages/AccountImage.png'; // Account image for account page
 import cartSelected from './staticImages/CartImageSelected.png'; // Image to show the current page - Cart page
 import accountSelected from './staticImages/AccountImageSelected.png'; // Image to show the current page - Account page
+import xButton from './staticImages/XButton.png'; // Image for x button to exit out of account and cart pages
 
 var { height, width } = Dimensions.get('window'); // Device dimensions
 
@@ -68,7 +68,6 @@ async function signup(email, username, password, signupChange) {
   );
   const json = await response.json();
   signupChange(json['response']);
-  console.log(json);
 }
 
 // Function for sending post information to login endpoint, and response is held in loginResponse
@@ -89,7 +88,6 @@ async function login(username, password, loginChange) {
   );
   const json = await response.json();
   loginChange(json['response']);
-  console.log(json);
 }
 
 // Function for storing a user that has logged in or signed up
@@ -143,7 +141,6 @@ async function addToCart(
     }
   );
   const json = await response.json();
-  console.log(json);
 }
 
 // Function for getting cart of currently logged in user
@@ -163,8 +160,46 @@ async function getCart(username, cartChange, loadingChange) {
   );
   const json = await response.json();
   cartChange(json['cart']);
-  console.log(json);
   loadingChange(true);
+}
+
+// Function for changing qunatity of product in user's cart
+async function changeProductQuantity(username, productTitle, amount) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/updateCartQuantity',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        productTitle: productTitle,
+        quantity: amount,
+      }),
+    }
+  );
+  const json = await response.json();
+}
+
+// Function for changing qunatity of product in user's cart
+async function deleteProduct(username, productTitle) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/deleteProduct',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        productTitle: productTitle,
+      }),
+    }
+  );
+  const json = await response.json();
 }
 
 // Product Page
@@ -192,7 +227,7 @@ function ProductPage({ navigation, route }) {
                 navigation.goBack();
               }}
               style={styles.backButton}>
-              <Image source={backArrow} style={styles.backButtonImage} />
+              <Image source={xButton} style={styles.backButtonImage} />
             </Pressable>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
@@ -259,16 +294,16 @@ function ProductPage({ navigation, route }) {
                   style={styles.addToCartButton}
                   onPress={() =>
                     addedToCart
-                      ? (navigation.replace('CartPage'),
+                      ? (navigation.navigate('CartPage'),
                         addedToCartChange(false))
                       : (currentUser == null || currentUser == '') && userLoaded
-                      ? navigation.replace('Login')
+                      ? navigation.navigate('Login')
                       : (addToCart(
                           currentUser,
                           route.params.title,
                           route.params.image,
                           route.params.price,
-                          quantity == null || quantity == '' ? 1 : quantity
+                          quantity == null || quantity == '' ? 1 : quantity // Empty quantity defaults to using 1 as quantity for product
                         ),
                         addedToCartChange(true))
                   }>
@@ -293,6 +328,7 @@ function CartPage({ navigation }) {
   const [cartResponse, cartResponseChange] = useState([]); // State for holding response from getCart endpoint
   const [cart, cartChange] = useState([]); // State for holding actual cart of products from user to display using FlatList
   const [cartLoading, cartLoadingChange] = useState(false); // State for checking if getCart async function has finished
+  const [productDeleted, productDeletedChange] = useState(''); // State for checking if a product was deleted to refresh page
 
   useEffect(() => {
     // useEffect used to only get the currentUser, if it exists
@@ -307,9 +343,18 @@ function CartPage({ navigation }) {
     userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded. Used to not repeat this if statement
   }
 
-  function changeQuantity(amount, cartIndex) {
-    console.log(amount);
-    console.log('cartIndex' + cartIndex);
+  // Function for changing the quantity of the product in the database whenever user changes quantity in textInput
+  function changeQuantity(amount, productTitle) {
+    if (amount == '' || amount == null) {
+      amount = '1';
+    }
+    for (let i = 0; i < cart.length; i++) {
+      // Updating quantity in cart State
+      if (productTitle == cart[i]['title']) {
+        cart[i]['quantity'] = amount;
+      }
+    }
+    changeProductQuantity(currentUser, productTitle, amount);
   }
 
   // Function for getting the quantity of the item in the cart with title passed in as parameter
@@ -323,7 +368,7 @@ function CartPage({ navigation }) {
   }
 
   if (cartLoading) {
-    if (cartResponse[0] != 'No Cart') {
+    if (cartResponse[0] != 'No Cart' && cartResponse[0] != '') {
       // Method for making array of dictionaries for each product in user's cart
       for (var i = 0; i < cartResponse.length; i++) {
         var cartRow = cartResponse[i].split('~');
@@ -352,7 +397,6 @@ function CartPage({ navigation }) {
             ) {
               return null;
             } else {
-              navigation.setOptions({ animation: 'fade' });
               navigation.navigate('ProductPage', {
                 title: title,
                 image: image,
@@ -367,18 +411,45 @@ function CartPage({ navigation }) {
             {/*View for text of listing*/}
             <View style={styles.productText}>
               {/*Actual text*/}
-              <Text style={styles.productTextTitle}>{title}</Text>
+              <Text numberOfLines={2} style={styles.productTextTitle}>
+                {title}
+              </Text>
               <Text style={styles.productTextTitle}>${price}</Text>
-              <Text style={styles.productTextTitle}>Quantity:</Text>
-              <TextInput
-                style={styles.cartQuantityInput}
-                onChangeText={(text) => changeQuantity(text, title)}
-                returnKeyType="done"
-                keyboardType="number-pad"
-                placeholder="Qty"
-                maxLength={2}
-                defaultValue={checkQuantity(title)}
-              />
+              <View
+                style={{
+                  flexDirection: 'row',
+                }}>
+                <Text style={styles.productTextTitle}>Quantity: </Text>
+                <TextInput
+                  style={styles.cartQuantityInput}
+                  onChangeText={(text) => changeQuantity(text, title)}
+                  returnKeyType="done"
+                  keyboardType="number-pad"
+                  placeholder="Qty"
+                  maxLength={2}
+                  defaultValue={checkQuantity(title)}
+                />
+              </View>
+              <Pressable // Pressable for deleting product from user's cart
+                style={{ paddingVertical: 5, maxWidth: '80%' }}
+                onPress={() => {
+                  deleteProduct(currentUser, title); // Function to remove product from uer's cart in database
+                  for (let i = 0; i < cart.length; i++) {
+                    if (cart[i]['title'] == title) {
+                      cart.splice(i, 1); // Remove element from cart State
+                    }
+                  }
+                  productDeletedChange(title); // Change productDeleted state to rerender Cart Page
+                }}>
+                <Text
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 'bold',
+                    color: '#05acbe',
+                  }}>
+                  Remove Product
+                </Text>
+              </Pressable>
             </View>
           </View>
         </Pressable>
@@ -405,19 +476,19 @@ function CartPage({ navigation }) {
                 navigation.goBack();
               }}
               style={styles.backButton}>
-              <Image source={backArrow} style={styles.backButtonImage} />
+              <Image source={xButton} style={styles.backButtonImage} />
             </Pressable>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image - image is different color to show that user is currently on cart page
               onPress={() => {
-                navigation.navigate('CartPage');
+                navigation.replace('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
               <Image source={cartSelected} style={styles.cartImage} />
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.navigate('Account');
+                navigation.replace('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={account} style={styles.accountImage} />
@@ -426,42 +497,55 @@ function CartPage({ navigation }) {
           {/*View for body flexbox*/}
           <View style={styles.body}>
             <Text style={styles.cartAccountTitle}>Cart{'\n'}</Text>
-            {(currentUser == null || currentUser == '') && userLoaded ? (
-              <>
-                <Text
-                  style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-                  No User Logged in!
-                  {'\n'}
-                </Text>
-                <Pressable // Logout button
-                  style={styles.submitButton}
-                  onPress={() => {
-                    logout(currentUserChange, userLoadingChange),
-                      navigation.replace('Login');
-                  }}>
-                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
-                    LOGIN
+            <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
+              behavior="height"
+              keyboardVerticalOffset={height * 0.215}
+              style={{ flex: 1 }}>
+              {(currentUser == null || currentUser == '') && userLoaded ? (
+                <>
+                  <Text
+                    style={{
+                      fontSize: 21,
+                      fontWeight: 'bold',
+                      paddingLeft: 2,
+                    }}>
+                    No User Logged in!
+                    {'\n'}
                   </Text>
-                </Pressable>
-              </>
-            ) : cartResponse.length > 0 ? (
-              cart.length > 0 ? (
-                //FlatList of product listings in user's cart once cart has loaded
-                <FlatList data={cart} renderItem={listingsRender} />
+                  <Pressable // Login button
+                    style={styles.submitButton}
+                    onPress={() => {
+                      logout(currentUserChange, userLoadingChange),
+                        navigation.replace('Login');
+                    }}>
+                    <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                      LOGIN
+                    </Text>
+                  </Pressable>
+                </>
+              ) : cartResponse.length > 0 ? (
+                cart.length > 0 ? (
+                  //FlatList of product listings in user's cart once cart has loaded
+                  <FlatList data={cart} renderItem={listingsRender} />
+                ) : (
+                  <Text
+                    style={{
+                      fontSize: 21,
+                      fontWeight: 'bold',
+                      paddingLeft: 2,
+                    }}>
+                    {'\n'}
+                    Nothing in Cart
+                    {'\n'}
+                  </Text>
+                )
               ) : (
-                <Text
-                  style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-                  {'\n'}
-                  Nothing in Cart
-                  {'\n'}
-                </Text>
-              )
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center' }}>
-                {/* Acitivty indicator while the cart response or cart creation is loading */}
-                <ActivityIndicator size="large" color="#0000ff" />
-              </View>
-            )}
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                  {/* Acitivty indicator while the cart response or cart creation is loading */}
+                  <ActivityIndicator size="large" color="#0000ff" />
+                </View>
+              )}
+            </KeyboardAvoidingView>
           </View>
         </View>
       </View>
@@ -497,15 +581,15 @@ function Account({ navigation, route }) {
           <View style={styles.titleContainer}>
             <Pressable // Pressable for back button
               onPress={() => {
-                navigation.popToTop();
+                navigation.goBack();
               }}
               style={styles.backButton}>
-              <Image source={backArrow} style={styles.backButtonImage} />
+              <Image source={xButton} style={styles.backButtonImage} />
             </Pressable>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
-                navigation.navigate('CartPage');
+                navigation.replace('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
               <Image source={cart} style={styles.cartImage} />
@@ -534,8 +618,8 @@ function Account({ navigation, route }) {
               <Pressable // Logout button
                 style={styles.submitButton}
                 onPress={() => {
-                  logout(currentUserChange, userLoadingChange),
-                    navigation.replace('Login');
+                  logout(currentUserChange, userLoadingChange);
+                  navigation.replace('Login');
                 }}>
                 <Text style={{ fontSize: 21, fontWeight: 'bold' }}>LOGOUT</Text>
               </Pressable>
@@ -687,7 +771,7 @@ function SignUp({ navigation }) {
           <View style={styles.titleContainer}>
             <Pressable // Pressable for back button
               onPress={() => {
-                navigation.pop();
+                navigation.replace('Login');
               }}
               style={styles.backButton}>
               <Image source={backArrow} style={styles.backButtonImage} />
@@ -695,15 +779,13 @@ function SignUp({ navigation }) {
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
-                navigation.navigate('CartPage');
+                navigation.replace('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
               <Image source={cart} style={styles.cartImage} />
             </Pressable>
             <Pressable // Pressable for account image - image is different color to show that user is currently on account page
-              onPress={() => {
-                navigation.replace('Login');
-              }}
+              onPress={() => {}}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={accountSelected} style={styles.accountImage} />
             </Pressable>
@@ -881,7 +963,7 @@ function Login({ navigation }) {
                 navigation.goBack();
               }}
               style={styles.backButton}>
-              <Image source={backArrow} style={styles.backButtonImage} />
+              <Image source={xButton} style={styles.backButtonImage} />
             </Pressable>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
@@ -892,9 +974,7 @@ function Login({ navigation }) {
               <Image source={cart} style={styles.cartImage} />
             </Pressable>
             <Pressable // Pressable for account image - image is different color to show that user is currently on login page
-              onPress={() => {
-                navigation.replace('Signup');
-              }}
+              onPress={() => {}}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
               <Image source={accountSelected} style={styles.accountImage} />
             </Pressable>
@@ -1088,7 +1168,6 @@ function SearchAndCategories({ navigation, route }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() => {
-              navigation.setOptions({ animation: 'fade' });
               navigation.navigate('ProductPage', {
                 title: title,
                 image: image,
@@ -1185,7 +1264,6 @@ function SearchAndCategories({ navigation, route }) {
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
-                navigation.setOptions({ animation: 'fade' });
                 navigation.navigate('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
@@ -1193,7 +1271,6 @@ function SearchAndCategories({ navigation, route }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.setOptions({ animation: 'fade' });
                 navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
@@ -1328,7 +1405,6 @@ function Home({ navigation, route }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() => {
-              navigation.setOptions({ animation: 'fade' });
               navigation.navigate('ProductPage', {
                 title: title,
                 image: image,
@@ -1424,7 +1500,6 @@ function Home({ navigation, route }) {
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
             <Pressable // Pressable for shopping cart image
               onPress={() => {
-                navigation.setOptions({ animation: 'fade' });
                 navigation.navigate('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
@@ -1432,7 +1507,6 @@ function Home({ navigation, route }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
-                navigation.setOptions({ animation: 'fade' });
                 navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
@@ -1447,7 +1521,6 @@ function Home({ navigation, route }) {
               onChangeText={searchChange}
               placeholder="Search for a product here!"
               onSubmitEditing={() => {
-                navigation.setOptions({ animation: 'fade' });
                 if (search.length != 0) {
                   navigation.replace('SearchAndCategories', {
                     title: search,
@@ -1493,7 +1566,7 @@ export default function App() {
         <Stack.Screen
           name="ProductPage"
           component={ProductPage}
-          options={{ animation: 'fade' }}
+          options={{ animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
           name="CartPage"
@@ -1584,10 +1657,10 @@ const styles = StyleSheet.create({
   },
   // Style for back button in product pages
   backButton: {
-    width: width * 0.095,
-    height: height * 0.05,
-    marginTop: height * 0.05,
-    marginLeft: width * 0.03,
+    width: width * 0.1,
+    height: height * 0.055,
+    marginTop: height * 0.045,
+    marginLeft: width * 0.04,
   },
   // Style for image of back button in product pages
   backButtonImage: {
@@ -1735,13 +1808,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#05acbe',
     borderRadius: 7.5,
   },
+  // Quantity text input for cart page listings
   cartQuantityInput: {
+    marginTop: height * -0.004,
     width: '25%',
-    height: '25%',
-    fontSize: 20,
+    height: '100%',
+    fontSize: 22,
     borderWidth: 2,
     borderRadius: 5,
   },
+  // Quantity text input for product page listings
   productQuantityInput: {
     width: '12.5%',
     height: '100%',
