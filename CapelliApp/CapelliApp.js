@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import {
   Text,
   View,
@@ -14,14 +14,17 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useIsFocused } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RNPickerSelect from 'react-native-picker-select';
 
 import capelliLogo from './staticImages/CapelliLogo.png'; // Capelli logo png
 import lines from './staticImages/ThreeLines.png'; // Three lines png for navigation opener
 import cart from './staticImages/CartImage.png'; // Cart image for items in cart page
 import account from './staticImages/AccountImage.png'; // Account image for account page
+import backArrow from './staticImages/BackArrow.png'; // Back arrow image for signup page
+import forwardArrow from './staticImages/ForwardArrow.png'; // Forward arrow image for account page
 import cartSelected from './staticImages/CartImageSelected.png'; // Image to show the current page - Cart page
 import accountSelected from './staticImages/AccountImageSelected.png'; // Image to show the current page - Account page
 import xButton from './staticImages/XButton.png'; // Image for x button to exit out of account and cart pages
@@ -121,7 +124,8 @@ async function addToCart(
   productTitle,
   productImage,
   productPrice,
-  quantity
+  quantity,
+  addedToCartChange
 ) {
   const response = await fetch(
     'https://adrielcapelli.pythonanywhere.com/addToCart',
@@ -141,6 +145,7 @@ async function addToCart(
     }
   );
   const json = await response.json();
+  addedToCartChange(true);
 }
 
 // Function for getting cart of currently logged in user
@@ -161,6 +166,87 @@ async function getCart(username, cartChange, loadingChange) {
   const json = await response.json();
   cartChange(json['cart']);
   loadingChange(true);
+}
+
+// Function for changing an existing address of a user
+async function changeAddress(
+  username,
+  index,
+  addressOne,
+  addressTwo,
+  state,
+  zipCode,
+  addressesDoneChange
+) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/changeAddress',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        addressOne: addressOne,
+        addressTwo: addressTwo,
+        state: state,
+        zipCode: zipCode,
+        index: index,
+      }),
+    }
+  );
+  const json = await response.json();
+  addressesDoneChange(true);
+}
+
+// Function for adding a new address to the user's account
+async function addAddress(
+  username,
+  addressOne,
+  addressTwo,
+  state,
+  zipCode,
+  addressesDoneChange
+) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/addAddress',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        addressOne: addressOne,
+        addressTwo: addressTwo,
+        state: state,
+        zipCode: zipCode,
+      }),
+    }
+  );
+  const json = await response.json();
+  addressesDoneChange(true);
+}
+
+// Function for getting address of currently logged in user
+async function getAddresses(username, addressChange) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/getAddresses',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    }
+  );
+  const json = await response.json();
+  addressChange(json['addresses']);
 }
 
 // Function for changing qunatity of product in user's cart
@@ -206,7 +292,8 @@ async function deleteProduct(username, productTitle) {
 function ProductPage({ navigation, route }) {
   const [currentUser, currentUserChange] = useState(''); // State for holding the current user
   const [userLoaded, userLoadedChange] = useState(false); // State for checking if current user async function has finished, and a user has been checked for
-  const [addedToCart, addedToCartChange] = useState(false); // State for checking that product has been added to cart
+  const [addedToCart, addedToCartChange] = useState(false); // State for checking that the product has been added to the user's cart
+  const [addToCartPressed, addToCartPressedChange] = useState(false); // State for checking if the add to cart button has been pressed
   const [quantity, quantityChange] = useState(0); // State for quantity
 
   useEffect(() => {
@@ -216,37 +303,43 @@ function ProductPage({ navigation, route }) {
 
   return (
     <>
-      {/*View for all components on home page*/}
-      <View style={styles.allViews}>
-        {/*Container for Product page*/}
-        <View style={styles.mainPage}>
-          {/*View for title flexbox*/}
-          <View style={styles.titleContainer}>
-            <Pressable // Pressable for back button
-              onPress={() => {
-                navigation.goBack();
-              }}
-              style={styles.backButton}>
-              <Image source={xButton} style={styles.backButtonImage} />
-            </Pressable>
+      {/*Container for Product page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
-            <Pressable // Pressable for shopping cart image
-              onPress={() => {
-                navigation.navigate('CartPage');
-              }}
-              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
-              <Image source={cart} style={styles.cartImage} />
-            </Pressable>
-            <Pressable // Pressable for account image
-              onPress={() => {
-                navigation.navigate('Account');
-              }}
-              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
-              <Image source={account} style={styles.accountImage} />
-            </Pressable>
-          </View>
-          {/*View for body flexbox*/}
-          <View style={styles.body}>
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.navigate('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image
+            onPress={() => {
+              navigation.navigate('Account');
+            }}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={account} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        {/*View for body flexbox*/}
+        <View style={styles.body}>
+          {/* Cannot use KeyboardAvoidingView when using android */}
+          {Platform.OS == 'ios' ? (
             <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
               behavior="height"
               keyboardVerticalOffset={height * 0.215}
@@ -294,8 +387,7 @@ function ProductPage({ navigation, route }) {
                   style={styles.addToCartButton}
                   onPress={() =>
                     addedToCart
-                      ? (navigation.navigate('CartPage'),
-                        addedToCartChange(false))
+                      ? navigation.navigate('CartPage')
                       : (currentUser == null || currentUser == '') && userLoaded
                       ? navigation.navigate('Login')
                       : (addToCart(
@@ -303,17 +395,98 @@ function ProductPage({ navigation, route }) {
                           route.params.title,
                           route.params.image,
                           route.params.price,
-                          quantity == null || quantity == '' ? 1 : quantity // Empty quantity defaults to using 1 as quantity for product
+                          quantity == null || quantity == '' ? 1 : quantity, // Empty quantity defaults to using 1 as quantity for product
+                          addedToCartChange
                         ),
-                        addedToCartChange(true))
+                        addToCartPressedChange(true))
                   }>
                   <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
-                    {addedToCart ? 'View in Cart' : 'Add to cart'}
+                    {addToCartPressed ? (
+                      addedToCart ? (
+                        'View in Cart'
+                      ) : (
+                        <View style={{ flex: 1, justifyContent: 'center' }}>
+                          {/* Acitivty indicator while the cart response or cart creation is loading */}
+                          <ActivityIndicator size="large" color="#05acbe" />
+                        </View>
+                      )
+                    ) : (
+                      'Add to cart'
+                    )}
                   </Text>
                 </Pressable>
               </ScrollView>
             </KeyboardAvoidingView>
-          </View>
+          ) : (
+            <ScrollView>
+              {/* Image of the product */}
+              <Image
+                style={styles.productPageImage}
+                source={{ uri: route.params.image }}
+              />
+              {/* Title text for Product page */}
+              <Text style={styles.productTitleText}>{route.params.title}</Text>
+              <Text style={styles.productTitleText}>${route.params.price}</Text>
+              {/* View for Quantity Section for Product Page*/}
+              <View
+                style={{
+                  paddingLeft: 5,
+                  marginLeft: width * 0.03,
+                  flexDirection: 'row',
+                }}>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 'bold',
+                  }}>
+                  Quantity:{'  '}
+                </Text>
+                <TextInput
+                  style={styles.productQuantityInput}
+                  onChangeText={quantityChange}
+                  returnKeyType="done"
+                  keyboardType="number-pad"
+                  placeholder="Qty"
+                  maxLength={2}
+                  defaultValue="1"
+                />
+              </View>
+              {/*View for creating a space quantity and Add to Cart button */}
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Pressable // Add to cart button
+                style={styles.addToCartButton}
+                onPress={() =>
+                  addedToCart
+                    ? navigation.navigate('CartPage')
+                    : (currentUser == null || currentUser == '') && userLoaded
+                    ? navigation.navigate('Login')
+                    : (addToCart(
+                        currentUser,
+                        route.params.title,
+                        route.params.image,
+                        route.params.price,
+                        quantity == null || quantity == '' ? 1 : quantity, // Empty quantity defaults to using 1 as quantity for product
+                        addedToCartChange
+                      ),
+                      addToCartPressedChange(true))
+                }>
+                <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                  {addToCartPressed ? (
+                    addedToCart ? (
+                      'View in Cart'
+                    ) : (
+                      <View style={{ flex: 1, justifyContent: 'center' }}>
+                        {/* Acitivty indicator while the cart response or cart creation is loading */}
+                        <ActivityIndicator size="large" color="#05acbe" />
+                      </View>
+                    )
+                  ) : (
+                    'Add to cart'
+                  )}
+                </Text>
+              </Pressable>
+            </ScrollView>
+          )}
         </View>
       </View>
     </>
@@ -321,7 +494,7 @@ function ProductPage({ navigation, route }) {
 }
 
 // Cart Page
-function CartPage({ navigation }) {
+function CartPage({ navigation, route }) {
   const [currentUser, currentUserChange] = useState(''); // State for holding the current user
   const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
   const [userLoaded, userLoadedChange] = useState(false); // State for checking if a user is loaded into the currentUser state
@@ -369,7 +542,7 @@ function CartPage({ navigation }) {
 
   if (cartLoading) {
     if (cartResponse[0] != 'No Cart' && cartResponse[0] != '') {
-      // Method for making array of dictionaries for each product in user's cart
+      // Loop for making array of dictionaries for each product in user's cart
       for (var i = 0; i < cartResponse.length; i++) {
         var cartRow = cartResponse[i].split('~');
         var productRow = {};
@@ -465,38 +638,42 @@ function CartPage({ navigation }) {
 
   return (
     <>
-      {/*View for all components on home page*/}
-      <View style={styles.allViews}>
-        {/*Container for Cart page*/}
-        <View style={styles.mainPage}>
-          {/*View for title flexbox*/}
-          <View style={styles.titleContainer}>
-            <Pressable // Pressable for back button
-              onPress={() => {
-                navigation.goBack();
-              }}
-              style={styles.backButton}>
-              <Image source={xButton} style={styles.backButtonImage} />
-            </Pressable>
+      {/*Container for Cart page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
-            <Pressable // Pressable for shopping cart image - image is different color to show that user is currently on cart page
-              onPress={() => {
-                navigation.replace('CartPage');
-              }}
-              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
-              <Image source={cartSelected} style={styles.cartImage} />
-            </Pressable>
-            <Pressable // Pressable for account image
-              onPress={() => {
-                navigation.replace('Account');
-              }}
-              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
-              <Image source={account} style={styles.accountImage} />
-            </Pressable>
-          </View>
-          {/*View for body flexbox*/}
-          <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Cart{'\n'}</Text>
+          </Pressable>
+          <Pressable // Pressable for shopping cart image - image is different color to show that user is currently on cart page
+            onPress={() => {}}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cartSelected} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image
+            onPress={() => {
+              navigation.replace('Account');
+            }}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={account} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        {/*View for body flexbox*/}
+        <View style={styles.body}>
+          <Text style={styles.cartAccountTitle}>Cart{'\n'}</Text>
+          {/* Cannot use KeyboardAvoidingView when using android */}
+          {Platform.OS == 'ios' ? (
             <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
               behavior="height"
               keyboardVerticalOffset={height * 0.215}
@@ -542,18 +719,880 @@ function CartPage({ navigation }) {
               ) : (
                 <View style={{ flex: 1, justifyContent: 'center' }}>
                   {/* Acitivty indicator while the cart response or cart creation is loading */}
-                  <ActivityIndicator size="large" color="#0000ff" />
+                  <ActivityIndicator size="large" color="#05acbe" />
                 </View>
               )}
             </KeyboardAvoidingView>
-          </View>
+          ) : (currentUser == null || currentUser == '') && userLoaded ? (
+            <>
+              <Text
+                style={{
+                  fontSize: 21,
+                  fontWeight: 'bold',
+                  paddingLeft: 2,
+                }}>
+                No User Logged in!
+                {'\n'}
+              </Text>
+              <Pressable // Login button
+                style={styles.submitButton}
+                onPress={() => {
+                  logout(currentUserChange, userLoadingChange),
+                    navigation.replace('Login');
+                }}>
+                <Text style={{ fontSize: 21, fontWeight: 'bold' }}>LOGIN</Text>
+              </Pressable>
+            </>
+          ) : cartResponse.length > 0 ? (
+            cart.length > 0 ? (
+              //FlatList of product listings in user's cart once cart has loaded
+              <FlatList data={cart} renderItem={listingsRender} />
+            ) : (
+              <Text
+                style={{
+                  fontSize: 21,
+                  fontWeight: 'bold',
+                  paddingLeft: 2,
+                }}>
+                {'\n'}
+                Nothing in Cart
+                {'\n'}
+              </Text>
+            )
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              {/* Acitivty indicator while the cart response or cart creation is loading */}
+              <ActivityIndicator size="large" color="#05acbe" />
+            </View>
+          )}
         </View>
       </View>
     </>
   );
 }
 
-// Account/Logged In Page
+// Edit Address page
+function EditAddress({ navigation, route }) {
+  const [addressOne, addressOneChange] = useState(route.params.address1); // State that holds the 1st address line of the editing address
+  const [addressTwo, addressTwoChange] = useState(route.params.address2); // State that holds the 2nd address line of the editing address
+  const [state, stateChange] = useState(route.params.state); // State that holds the state of the editing address
+  const [zipCode, zipCodeChange] = useState(route.params.zipCode); // State that holds the zip code of the editing address
+  const [addressesDone, addressesDoneChange] = useState(false); // State that checks if changing address is completed
+  const [savePressed, savePressedChange] = useState(false); // State that checks if user presses save button
+
+  if (savePressed && addressesDone) {
+    navigation.goBack();
+  }
+
+  return (
+    <>
+      {/*Container for Address Editing page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on login page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        <View style={styles.body}>
+          <Text style={styles.cartAccountTitle}>
+            Change Address
+            {'\n'}
+          </Text>
+          {/* Cannot use KeyboardAvoidingView when using android */}
+          {Platform.OS == 'ios' ? (
+            <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
+              behavior="height"
+              keyboardVerticalOffset={height * 0.215}
+              style={{ flex: 1 }}>
+              <ScrollView>
+                <Text
+                  style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                  Address Line 1:
+                </Text>
+                <TextInput
+                  style={styles.inputBar}
+                  onChangeText={(text) => {
+                    addressOneChange(text);
+                  }}
+                  clearButtonMode="while-editing"
+                  returnKeyType="done"
+                  defaultValue={addressOne}
+                />
+                <Text
+                  style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                  Address Line 2:
+                </Text>
+                <TextInput
+                  style={styles.inputBar}
+                  clearButtonMode="while-editing"
+                  onChangeText={(text) => {
+                    addressTwoChange(text);
+                  }}
+                  returnKeyType="done"
+                  defaultValue={addressTwo}
+                />
+                <Text
+                  style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                  State:
+                </Text>
+                <View style={styles.pickerViewStyle}>
+                  <RNPickerSelect
+                    style={styles.pickerStyle}
+                    onValueChange={(value) => stateChange(value)}
+                    value={state}
+                    useNativeAndroidPickerStyle={false}
+                    items={[
+                      { label: 'AL', value: 'AL' },
+                      { label: 'AK', value: 'AK' },
+                      { label: 'AZ', value: 'AZ' },
+                      { label: 'AR', value: 'AR' },
+                      { label: 'CA', value: 'CA' },
+                      { label: 'CO', value: 'CO' },
+                      { label: 'CT', value: 'CT' },
+                      { label: 'DE', value: 'DE' },
+                      { label: 'FL', value: 'FL' },
+                      { label: 'GA', value: 'GA' },
+                      { label: 'HI', value: 'HI' },
+                      { label: 'ID', value: 'ID' },
+                      { label: 'IL', value: 'IL' },
+                      { label: 'IN', value: 'IN' },
+                      { label: 'IA', value: 'IA' },
+                      { label: 'KS', value: 'KS' },
+                      { label: 'KY', value: 'KY' },
+                      { label: 'LA', value: 'LA' },
+                      { label: 'ME', value: 'ME' },
+                      { label: 'MD', value: 'MD' },
+                      { label: 'MA', value: 'MA' },
+                      { label: 'MI', value: 'MI' },
+                      { label: 'MN', value: 'MN' },
+                      { label: 'MS', value: 'MS' },
+                      { label: 'MO', value: 'MO' },
+                      { label: 'MT', value: 'MT' },
+                      { label: 'NE', value: 'NE' },
+                      { label: 'NV', value: 'NV' },
+                      { label: 'NH', value: 'NH' },
+                      { label: 'NJ', value: 'NJ' },
+                      { label: 'NM', value: 'NM' },
+                      { label: 'NY', value: 'NY' },
+                      { label: 'NC', value: 'NC' },
+                      { label: 'ND', value: 'ND' },
+                      { label: 'OH', value: 'OH' },
+                      { label: 'OK', value: 'OK' },
+                      { label: 'OR', value: 'OR' },
+                      { label: 'PA', value: 'PA' },
+                      { label: 'RI', value: 'RI' },
+                      { label: 'SC', value: 'SC' },
+                      { label: 'SD', value: 'SD' },
+                      { label: 'TN', value: 'TN' },
+                      { label: 'TX', value: 'TX' },
+                      { label: 'UT', value: 'UT' },
+                      { label: 'VT', value: 'VT' },
+                      { label: 'VA', value: 'VA' },
+                      { label: 'WA', value: 'WA' },
+                      { label: 'WV', value: 'WV' },
+                      { label: 'WI', value: 'WI' },
+                      { label: 'WY', value: 'WY' },
+                    ]}
+                  />
+                </View>
+                <Text
+                  style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                  Zip Code:
+                </Text>
+                <TextInput
+                  style={styles.inputBar}
+                  clearButtonMode="while-editing"
+                  onChangeText={(text) => {
+                    zipCodeChange(text);
+                  }}
+                  returnKeyType="done"
+                  defaultValue={zipCode}
+                />
+                {/*View for creating a space between zip code input and submit button*/}
+                <View style={{ height: height * 0.02, width: '100%' }}></View>
+                <Pressable // Save button
+                  style={styles.submitButton}
+                  disabled={savePressed}
+                  onPress={() => {
+                    changeAddress(
+                      route.params.user,
+                      route.params.index,
+                      addressOne,
+                      addressTwo,
+                      state,
+                      zipCode,
+                      addressesDoneChange
+                    );
+                    savePressedChange(true);
+                  }}>
+                  {savePressed ? (
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <ActivityIndicator size="large" color="#000000" />
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                      SAVE
+                    </Text>
+                  )}
+                </Pressable>
+                {/*View for creating a space between submit button and bottom of scrollview */}
+                <View style={{ height: height * 0.04, width: '100%' }}></View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          ) : (
+            <ScrollView>
+              <Text
+                style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                Address Line 1:
+              </Text>
+              <TextInput
+                style={styles.inputBar}
+                onChangeText={(text) => {
+                  addressOneChange(text);
+                }}
+                clearButtonMode="while-editing"
+                returnKeyType="done"
+                defaultValue={addressOne}
+              />
+              <Text
+                style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                Address Line 2:
+              </Text>
+              <TextInput
+                style={styles.inputBar}
+                clearButtonMode="while-editing"
+                onChangeText={(text) => {
+                  addressTwoChange(text);
+                }}
+                returnKeyType="done"
+                defaultValue={addressTwo}
+              />
+              <Text
+                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                State:
+              </Text>
+              <View style={styles.pickerViewStyle}>
+                <RNPickerSelect
+                  style={styles.pickerStyle}
+                  onValueChange={(value) => stateChange(value)}
+                  value={state}
+                  useNativeAndroidPickerStyle={false}
+                  items={[
+                    { label: 'AL', value: 'AL' },
+                    { label: 'AK', value: 'AK' },
+                    { label: 'AZ', value: 'AZ' },
+                    { label: 'AR', value: 'AR' },
+                    { label: 'CA', value: 'CA' },
+                    { label: 'CO', value: 'CO' },
+                    { label: 'CT', value: 'CT' },
+                    { label: 'DE', value: 'DE' },
+                    { label: 'FL', value: 'FL' },
+                    { label: 'GA', value: 'GA' },
+                    { label: 'HI', value: 'HI' },
+                    { label: 'ID', value: 'ID' },
+                    { label: 'IL', value: 'IL' },
+                    { label: 'IN', value: 'IN' },
+                    { label: 'IA', value: 'IA' },
+                    { label: 'KS', value: 'KS' },
+                    { label: 'KY', value: 'KY' },
+                    { label: 'LA', value: 'LA' },
+                    { label: 'ME', value: 'ME' },
+                    { label: 'MD', value: 'MD' },
+                    { label: 'MA', value: 'MA' },
+                    { label: 'MI', value: 'MI' },
+                    { label: 'MN', value: 'MN' },
+                    { label: 'MS', value: 'MS' },
+                    { label: 'MO', value: 'MO' },
+                    { label: 'MT', value: 'MT' },
+                    { label: 'NE', value: 'NE' },
+                    { label: 'NV', value: 'NV' },
+                    { label: 'NH', value: 'NH' },
+                    { label: 'NJ', value: 'NJ' },
+                    { label: 'NM', value: 'NM' },
+                    { label: 'NY', value: 'NY' },
+                    { label: 'NC', value: 'NC' },
+                    { label: 'ND', value: 'ND' },
+                    { label: 'OH', value: 'OH' },
+                    { label: 'OK', value: 'OK' },
+                    { label: 'OR', value: 'OR' },
+                    { label: 'PA', value: 'PA' },
+                    { label: 'RI', value: 'RI' },
+                    { label: 'SC', value: 'SC' },
+                    { label: 'SD', value: 'SD' },
+                    { label: 'TN', value: 'TN' },
+                    { label: 'TX', value: 'TX' },
+                    { label: 'UT', value: 'UT' },
+                    { label: 'VT', value: 'VT' },
+                    { label: 'VA', value: 'VA' },
+                    { label: 'WA', value: 'WA' },
+                    { label: 'WV', value: 'WV' },
+                    { label: 'WI', value: 'WI' },
+                    { label: 'WY', value: 'WY' },
+                  ]}
+                />
+              </View>
+              <Text
+                style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                Zip Code:
+              </Text>
+              <TextInput
+                style={styles.inputBar}
+                clearButtonMode="while-editing"
+                onChangeText={(text) => {
+                  zipCodeChange(text);
+                }}
+                returnKeyType="done"
+                defaultValue={zipCode}
+              />
+              {/*View for creating a space between zip code input and submit button*/}
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Pressable // Save button
+                disabled={savePressed}
+                style={styles.submitButton}
+                onPress={() => {
+                  changeAddress(
+                    route.params.user,
+                    route.params.index,
+                    addressOne,
+                    addressTwo,
+                    state,
+                    zipCode,
+                    addressesDoneChange
+                  );
+                  savePressedChange(true);
+                }}>
+                {savePressed ? (
+                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <ActivityIndicator size="large" color="#000000" />
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>SAVE</Text>
+                )}
+              </Pressable>
+              {/*View for creating a space between submit button and bottom of scrollview */}
+              <View style={{ height: height * 0.04, width: '100%' }}></View>
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </>
+  );
+}
+
+// Add Address page
+function AddAddress({ navigation, route }) {
+  const [addressOne, addressOneChange] = useState(); // State that holds the 1st address line of the editing address
+  const [addressTwo, addressTwoChange] = useState(); // State that holds the 2nd address line of the editing address
+  const [state, stateChange] = useState('AL'); // State that holds the state of the editing address
+  const [zipCode, zipCodeChange] = useState(); // State that holds the zip code of the editing address
+  const [addressesDone, addressesDoneChange] = useState(false); // State that checks if changing address is completed
+  const [savePressed, savePressedChange] = useState(false); // State that checks if user presses save button
+
+  if (savePressed && addressesDone) {
+    navigation.goBack();
+  }
+
+  return (
+    <>
+      {/*Container for Address Editing page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on login page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        <View style={styles.body}>
+          <Text style={styles.cartAccountTitle}>
+            Add Address
+            {'\n'}
+          </Text>
+          {/* Cannot use KeyboardAvoidingView when using android */}
+          {Platform.OS == 'ios' ? (
+            <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
+              behavior="height"
+              keyboardVerticalOffset={height * 0.215}
+              style={{ flex: 1 }}>
+              <ScrollView>
+                <Text
+                  style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                  Address Line 1:
+                </Text>
+                <TextInput
+                  style={styles.inputBar}
+                  onChangeText={(text) => {
+                    addressOneChange(text);
+                  }}
+                  clearButtonMode="while-editing"
+                  returnKeyType="done"
+                  defaultValue={addressOne}
+                />
+                <Text
+                  style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                  Address Line 2:
+                </Text>
+                <TextInput
+                  style={styles.inputBar}
+                  clearButtonMode="while-editing"
+                  onChangeText={(text) => {
+                    addressTwoChange(text);
+                  }}
+                  returnKeyType="done"
+                  defaultValue={addressTwo}
+                />
+                <Text
+                  style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                  State:
+                </Text>
+                <View style={styles.pickerViewStyle}>
+                  <RNPickerSelect
+                    style={styles.pickerStyle}
+                    onValueChange={(value) => stateChange(value)}
+                    value={state}
+                    useNativeAndroidPickerStyle={false}
+                    items={[
+                      { label: 'AL', value: 'AL' },
+                      { label: 'AK', value: 'AK' },
+                      { label: 'AZ', value: 'AZ' },
+                      { label: 'AR', value: 'AR' },
+                      { label: 'CA', value: 'CA' },
+                      { label: 'CO', value: 'CO' },
+                      { label: 'CT', value: 'CT' },
+                      { label: 'DE', value: 'DE' },
+                      { label: 'FL', value: 'FL' },
+                      { label: 'GA', value: 'GA' },
+                      { label: 'HI', value: 'HI' },
+                      { label: 'ID', value: 'ID' },
+                      { label: 'IL', value: 'IL' },
+                      { label: 'IN', value: 'IN' },
+                      { label: 'IA', value: 'IA' },
+                      { label: 'KS', value: 'KS' },
+                      { label: 'KY', value: 'KY' },
+                      { label: 'LA', value: 'LA' },
+                      { label: 'ME', value: 'ME' },
+                      { label: 'MD', value: 'MD' },
+                      { label: 'MA', value: 'MA' },
+                      { label: 'MI', value: 'MI' },
+                      { label: 'MN', value: 'MN' },
+                      { label: 'MS', value: 'MS' },
+                      { label: 'MO', value: 'MO' },
+                      { label: 'MT', value: 'MT' },
+                      { label: 'NE', value: 'NE' },
+                      { label: 'NV', value: 'NV' },
+                      { label: 'NH', value: 'NH' },
+                      { label: 'NJ', value: 'NJ' },
+                      { label: 'NM', value: 'NM' },
+                      { label: 'NY', value: 'NY' },
+                      { label: 'NC', value: 'NC' },
+                      { label: 'ND', value: 'ND' },
+                      { label: 'OH', value: 'OH' },
+                      { label: 'OK', value: 'OK' },
+                      { label: 'OR', value: 'OR' },
+                      { label: 'PA', value: 'PA' },
+                      { label: 'RI', value: 'RI' },
+                      { label: 'SC', value: 'SC' },
+                      { label: 'SD', value: 'SD' },
+                      { label: 'TN', value: 'TN' },
+                      { label: 'TX', value: 'TX' },
+                      { label: 'UT', value: 'UT' },
+                      { label: 'VT', value: 'VT' },
+                      { label: 'VA', value: 'VA' },
+                      { label: 'WA', value: 'WA' },
+                      { label: 'WV', value: 'WV' },
+                      { label: 'WI', value: 'WI' },
+                      { label: 'WY', value: 'WY' },
+                    ]}
+                  />
+                </View>
+                <Text
+                  style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                  Zip Code:
+                </Text>
+                <TextInput
+                  style={styles.inputBar}
+                  clearButtonMode="while-editing"
+                  onChangeText={(text) => {
+                    zipCodeChange(text);
+                  }}
+                  returnKeyType="done"
+                  defaultValue={zipCode}
+                />
+                {/*View for creating a space between zip code input and submit button*/}
+                <View style={{ height: height * 0.02, width: '100%' }}></View>
+                <Pressable // Add button
+                  style={styles.submitButton}
+                  disabled={savePressed}
+                  onPress={() => {
+                    addAddress(
+                      route.params.user,
+                      addressOne,
+                      addressTwo,
+                      state,
+                      zipCode,
+                      addressesDoneChange
+                    );
+                    savePressedChange(true);
+                  }}>
+                  {savePressed ? (
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <ActivityIndicator size="large" color="#000000" />
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                      ADD
+                    </Text>
+                  )}
+                </Pressable>
+                {/*View for creating a space between submit button and bottom of scrollview */}
+                <View style={{ height: height * 0.04, width: '100%' }}></View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          ) : (
+            <ScrollView>
+              <Text
+                style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                Address Line 1:
+              </Text>
+              <TextInput
+                style={styles.inputBar}
+                onChangeText={(text) => {
+                  addressOneChange(text);
+                }}
+                clearButtonMode="while-editing"
+                returnKeyType="done"
+                defaultValue={addressOne}
+              />
+              <Text
+                style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                Address Line 2:
+              </Text>
+              <TextInput
+                style={styles.inputBar}
+                clearButtonMode="while-editing"
+                onChangeText={(text) => {
+                  addressTwoChange(text);
+                }}
+                returnKeyType="done"
+                defaultValue={addressTwo}
+              />
+              <Text
+                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+                State:
+              </Text>
+              <View style={styles.pickerViewStyle}>
+                <RNPickerSelect
+                  style={styles.pickerStyle}
+                  onValueChange={(value) => stateChange(value)}
+                  value={state}
+                  useNativeAndroidPickerStyle={false}
+                  items={[
+                    { label: 'AL', value: 'AL' },
+                    { label: 'AK', value: 'AK' },
+                    { label: 'AZ', value: 'AZ' },
+                    { label: 'AR', value: 'AR' },
+                    { label: 'CA', value: 'CA' },
+                    { label: 'CO', value: 'CO' },
+                    { label: 'CT', value: 'CT' },
+                    { label: 'DE', value: 'DE' },
+                    { label: 'FL', value: 'FL' },
+                    { label: 'GA', value: 'GA' },
+                    { label: 'HI', value: 'HI' },
+                    { label: 'ID', value: 'ID' },
+                    { label: 'IL', value: 'IL' },
+                    { label: 'IN', value: 'IN' },
+                    { label: 'IA', value: 'IA' },
+                    { label: 'KS', value: 'KS' },
+                    { label: 'KY', value: 'KY' },
+                    { label: 'LA', value: 'LA' },
+                    { label: 'ME', value: 'ME' },
+                    { label: 'MD', value: 'MD' },
+                    { label: 'MA', value: 'MA' },
+                    { label: 'MI', value: 'MI' },
+                    { label: 'MN', value: 'MN' },
+                    { label: 'MS', value: 'MS' },
+                    { label: 'MO', value: 'MO' },
+                    { label: 'MT', value: 'MT' },
+                    { label: 'NE', value: 'NE' },
+                    { label: 'NV', value: 'NV' },
+                    { label: 'NH', value: 'NH' },
+                    { label: 'NJ', value: 'NJ' },
+                    { label: 'NM', value: 'NM' },
+                    { label: 'NY', value: 'NY' },
+                    { label: 'NC', value: 'NC' },
+                    { label: 'ND', value: 'ND' },
+                    { label: 'OH', value: 'OH' },
+                    { label: 'OK', value: 'OK' },
+                    { label: 'OR', value: 'OR' },
+                    { label: 'PA', value: 'PA' },
+                    { label: 'RI', value: 'RI' },
+                    { label: 'SC', value: 'SC' },
+                    { label: 'SD', value: 'SD' },
+                    { label: 'TN', value: 'TN' },
+                    { label: 'TX', value: 'TX' },
+                    { label: 'UT', value: 'UT' },
+                    { label: 'VT', value: 'VT' },
+                    { label: 'VA', value: 'VA' },
+                    { label: 'WA', value: 'WA' },
+                    { label: 'WV', value: 'WV' },
+                    { label: 'WI', value: 'WI' },
+                    { label: 'WY', value: 'WY' },
+                  ]}
+                />
+              </View>
+              <Text
+                style={{ fontSize: 20, fontWeight: 'bold', paddingLeft: 2 }}>
+                Zip Code:
+              </Text>
+              <TextInput
+                style={styles.inputBar}
+                clearButtonMode="while-editing"
+                onChangeText={(text) => {
+                  zipCodeChange(text);
+                }}
+                returnKeyType="done"
+                defaultValue={zipCode}
+              />
+              {/*View for creating a space between zip code input and submit button*/}
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Pressable // Add button
+                disabled={savePressed}
+                style={styles.submitButton}
+                onPress={() => {
+                  addAddress(
+                    route.params.user,
+                    addressOne,
+                    addressTwo,
+                    state,
+                    zipCode,
+                    addressesDoneChange
+                  );
+                  savePressedChange(true);
+                }}>
+                {savePressed ? (
+                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <ActivityIndicator size="large" color="#000000" />
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>ADD</Text>
+                )}
+              </Pressable>
+              {/*View for creating a space between submit button and bottom of scrollview */}
+              <View style={{ height: height * 0.04, width: '100%' }}></View>
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </>
+  );
+}
+
+// Choose Address to Edit Page
+function ChooseAddress({ navigation }) {
+  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
+  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+  const [addressResponse, addressResponseChange] = useState(''); // State for holding response from getAddresses async function
+  const [addresses, addressesChange] = useState([]); // State for storing the addresses of the user in an array
+  const [addressesLoaded, addressesLoadedChange] = useState(false); // State for checking if addresses have finished loading
+
+  useEffect(() => {
+    // useEffect used to only get the currentUser, if it exists
+    getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
+    navigation.addListener('focus', () => {
+      // Called whenever this page is focused, to reload/reset all states to reload addresses to get accurate/up-to-date locations
+      if (currentUser.length != 0) {
+        userLoadingChange(true);
+        addressesLoadedChange(false);
+        addressesChange([]);
+        addressResponseChange('');
+      }
+    });
+  }, [navigation, currentUser]);
+
+  // Get addresses once user has been loaded
+  if (userLoading) {
+    getAddresses(currentUser, addressResponseChange);
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded
+  }
+
+  // Load response from getAddresses call into addresses state
+  if (
+    !addressesLoaded &&
+    addressResponse != 'No Address' &&
+    addressResponse.length != 0
+  ) {
+    for (let i = 0; i < addressResponse.length; i++) {
+      let addressesListRow = addressResponse[i].split('~');
+      let addressesDictRow = {};
+      addressesDictRow['Address1'] = addressesListRow[0];
+      addressesDictRow['Address2'] = addressesListRow[1];
+      addressesDictRow['State'] = addressesListRow[2];
+      addressesDictRow['zipCode'] = addressesListRow[3];
+      addresses.push(addressesDictRow);
+    }
+    addressesLoadedChange(true); // Change to true to render pressables
+  }
+
+  // Function for creating rendering addresses
+  function renderAddresses(index) {
+    return (
+      <>
+        <Pressable
+          style={styles.addressChangePressable}
+          onPress={() => {
+            navigation.navigate('EditAddress', {
+              address1: addresses[index]['Address1'],
+              address2: addresses[index]['Address2'],
+              state: addresses[index]['State'],
+              zipCode: addresses[index]['zipCode'],
+              user: currentUser,
+              index: index,
+            });
+          }}>
+          <Text numberOfLines={4} style={{ fontSize: 19, fontWeight: 'bold' }}>
+            {addresses[index]['Address1']}
+            {'\n'}
+            {addresses[index]['Address2']}
+            {'\n'}
+            {addresses[index]['State']} {addresses[index]['zipCode']}
+          </Text>
+          <View
+            style={{
+              flexDirection: 'column',
+              justifyContent: 'center',
+              width: '7.5%',
+            }}>
+            <Image
+              source={forwardArrow}
+              style={styles.addressChangePressableArrow}
+            />
+          </View>
+        </Pressable>
+        {/*View for creating a space between scrollview pressables */}
+        <View style={{ height: height * 0.02, width: '100%' }}></View>
+      </>
+    );
+  }
+
+  // Function for calling the renderAddresses function, used by the actual JSX return
+  function renderAddressesCall() {
+    let returnJSX = [];
+    for (let i = 0; i < addresses.length; i++) {
+      returnJSX.push(renderAddresses(i));
+    }
+    return returnJSX;
+  }
+
+  return (
+    <>
+      {/*Container for Account page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on account page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        {!addressesLoaded ? ( // Show activity indicator while addresses are loading
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color="#05acbe" />
+          </View>
+        ) : (
+          // If user does exist or is logged in - render the regular account page
+          <View style={styles.body}>
+            <Text style={styles.cartAccountTitle}>Choose Address{'\n'}</Text>
+            <ScrollView>
+              {addressesLoaded ? renderAddressesCall() : null}
+              {/*View for creating a space between address pressables and submit button*/}
+                <View style={{ height: height * 0.02, width: '100%' }}></View>
+                <Pressable // New Address button
+                  style={styles.submitButton}
+                  onPress={() => {navigation.navigate('AddAddress');
+                  }}>
+                    <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                      NEW ADDRESS
+                    </Text>
+                </Pressable>
+                {/*View for creating a space between button and bottom of scrollview */}
+                <View style={{ height: height * 0.04, width: '100%' }}></View>
+            </ScrollView>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
+
+// Account/Logged-In Page
 function Account({ navigation, route }) {
   const [currentUser, currentUserChange] = useState(''); // State for holding the current user
   const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
@@ -571,50 +1610,72 @@ function Account({ navigation, route }) {
     userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded
   }
 
+  // Function for creating a setting-change Pressable for scrollview
+  function settingChangePressable(text, onpress) {
+    return (
+      <>
+        <Pressable style={styles.accountChangePressable} onPress={onpress}>
+          <Text style={{ fontSize: 21, fontWeight: 'bold' }}>{text}</Text>
+          <Image
+            source={forwardArrow}
+            style={styles.accountChangePressableArrow}
+          />
+        </Pressable>
+        {/*View for creating a space between scrollview pressables */}
+        <View style={{ height: height * 0.02, width: '100%' }}></View>
+      </>
+    );
+  }
+
   return (
     <>
-      {/*View for all components on home page*/}
-      <View style={styles.allViews}>
-        {/*Container for Account page*/}
-        <View style={styles.mainPage}>
-          {/*View for title flexbox*/}
-          <View style={styles.titleContainer}>
-            <Pressable // Pressable for back button
-              onPress={() => {
-                navigation.goBack();
-              }}
-              style={styles.backButton}>
-              <Image source={xButton} style={styles.backButtonImage} />
-            </Pressable>
+      {/*Container for Account page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
-            <Pressable // Pressable for shopping cart image
-              onPress={() => {
-                navigation.replace('CartPage');
-              }}
-              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
-              <Image source={cart} style={styles.cartImage} />
-            </Pressable>
-            <Pressable // Pressable for account image - image is different color to show that user is currently on account page
-              onPress={() => {
-                navigation.replace('Account');
-              }}
-              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
-              <Image source={accountSelected} style={styles.accountImage} />
-            </Pressable>
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on account page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        {currentUser == null || currentUser == '' ? ( // Show activity indicator while user is loading
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color="#05acbe" />
           </View>
-          {currentUser == null || currentUser == '' ? ( // Show activity indicator while user is loading
-            <View style={{ flex: 1, justifyContent: 'center' }}>
-              <ActivityIndicator size="large" color="#0000ff" />
-            </View>
-          ) : (
-            // If user does exist or is logged in - render the regular account page
-            <View style={styles.body}>
-              <Text style={styles.cartAccountTitle}>Account{'\n'}</Text>
-              <Text
-                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-                Current User: {currentUser}
-                {'\n'}
-              </Text>
+        ) : (
+          // If user does exist or is logged in - render the regular account page
+          <View style={styles.body}>
+            <Text style={styles.cartAccountTitle}>Account{'\n'}</Text>
+            <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+              Current User: {currentUser}
+              {'\n'}
+            </Text>
+            <ScrollView>
+              {settingChangePressable('Edit Addresses', function () {
+                navigation.navigate('ChooseAddress');
+              })}
               <Pressable // Logout button
                 style={styles.submitButton}
                 onPress={() => {
@@ -623,16 +1684,16 @@ function Account({ navigation, route }) {
                 }}>
                 <Text style={{ fontSize: 21, fontWeight: 'bold' }}>LOGOUT</Text>
               </Pressable>
-            </View>
-          )}
-        </View>
+            </ScrollView>
+          </View>
+        )}
       </View>
     </>
   );
 }
 
 // Sign Up Page
-function SignUp({ navigation }) {
+function SignUp({ navigation, route }) {
   const [email, emailChange] = useState(''); // State for email
   const [confEmail, confEmailChange] = useState(''); // State for confirm email
   const [username, usernameChange] = useState(''); // State for username
@@ -763,41 +1824,46 @@ function SignUp({ navigation }) {
 
   return (
     <>
-      {/*View for all components on home page*/}
-      <View style={styles.allViews}>
-        {/*Container for Account page*/}
-        <View style={styles.mainPage}>
-          {/*View for title flexbox*/}
-          <View style={styles.titleContainer}>
-            <Pressable // Pressable for back button
-              onPress={() => {
-                navigation.replace('Login');
-              }}
-              style={styles.backButton}>
-              <Image source={backArrow} style={styles.backButtonImage} />
-            </Pressable>
+      {/*Container for Account page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.replace('Login');
+            }}
+            style={styles.backButton}>
+            <Image source={backArrow} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
-            <Pressable // Pressable for shopping cart image
-              onPress={() => {
-                navigation.replace('CartPage');
-              }}
-              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
-              <Image source={cart} style={styles.cartImage} />
-            </Pressable>
-            <Pressable // Pressable for account image - image is different color to show that user is currently on account page
-              onPress={() => {}}
-              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
-              <Image source={accountSelected} style={styles.accountImage} />
-            </Pressable>
-          </View>
-          {changingScreens ? null : ( // Return null while changing to account screen/page to not confuse the user
-            <View style={styles.body}>
-              <Text style={styles.cartAccountTitle}>Sign Up{'\n'}</Text>
-              <Text
-                style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-                Signup to see and track your orders!
-                {'\n'}
-              </Text>
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on account page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        {changingScreens ? null : ( // Return null while changing to account screen/page to not confuse the user
+          <View style={styles.body}>
+            <Text style={styles.cartAccountTitle}>Sign Up{'\n'}</Text>
+            <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+              Signup to see and track your orders!
+              {'\n'}
+            </Text>
+            {/* Cannot use KeyboardAvoidingView when using android */}
+            {Platform.OS == 'ios' ? (
               <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
                 behavior="padding"
                 keyboardVerticalOffset={height * 0.2}
@@ -880,34 +1946,117 @@ function SignUp({ navigation }) {
                   <View style={{ height: height * 0.04, width: '100%' }}></View>
                 </ScrollView>
               </KeyboardAvoidingView>
-            </View>
-          )}
-        </View>
+            ) : (
+              <ScrollView>
+                {inputBarRender(
+                  'Email',
+                  false,
+                  'Enter your email here',
+                  emailChange,
+                  false
+                )}
+                {inputBarRender(
+                  'Email',
+                  true,
+                  'Confirm your email here',
+                  confEmailChange,
+                  false
+                )}
+                {inputBarRender(
+                  'Username',
+                  false,
+                  'Maximum 15 Characters',
+                  usernameChange,
+                  false,
+                  15
+                )}
+                {inputBarRender(
+                  'Password',
+                  false,
+                  'Maximum 15 Characters',
+                  passwordChange,
+                  true,
+                  15
+                )}
+                {inputBarRender(
+                  'Password',
+                  true,
+                  'Maximum 15 Characters',
+                  confPasswordChange,
+                  true,
+                  15
+                )}
+                <Pressable // Pressable for going to login page
+                  style={{ paddingVertical: 15, width: width * 0.9 }}
+                  onPress={() => {
+                    navigation.replace('Login');
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 'bold',
+                      paddingLeft: 2,
+                      color: 'blue',
+                    }}>
+                    Press here to login!
+                  </Text>
+                </Pressable>
+                <Text
+                  style={{
+                    fontSize: 19,
+                    fontWeight: 'bold',
+                    paddingLeft: 2,
+                    color: 'red',
+                  }}>
+                  {'\n'}
+                  {inputCheck()}
+                  {'\n'}
+                  {signUpResponse}
+                  {'\n'}
+                </Text>
+                <Pressable // Submit button
+                  style={styles.submitButton}
+                  onPress={() => submitChange(true)}>
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                    SUBMIT
+                  </Text>
+                </Pressable>
+                {/*View for creating a space between submit button and bottom of scrollview */}
+                <View style={{ height: height * 0.04, width: '100%' }}></View>
+              </ScrollView>
+            )}
+          </View>
+        )}
       </View>
     </>
   );
 }
 
 // Login Page
-function Login({ navigation }) {
+function Login({ navigation, route }) {
   const [email, emailChange] = useState(''); // State for email
   const [username, usernameChange] = useState(''); // State for username
   const [password, passwordChange] = useState(''); // State for password
   const [submitPressed, submitChange] = useState(false); // State for checking if submit pressable was activated
   const [errorCheck, errorChange] = useState(false); // State for checking if there are any input errors
   const [loginResponse, loginChange] = useState(''); // State for containing the response from the post request to the login endpoint of the API. Will return either an error or the username of the logged in account
+  const [submitting, submittingChange] = useState(false); // State for checking if the page is currently submitting information to async function
 
-  if (loginResponse == username && loginResponse.length > 0) {
-    // If loginResponse successfully has a username stored in database
+  if (loginResponse != 'User not found!' && loginResponse.length > 0) {
+    // If loginResponse successfully has a username found in database
     storeUser(loginResponse); // Set current user to the one that has just logged in
     navigation.replace('Account'); // Navigate to Account page
+  }
+
+  if (loginResponse == 'User not found!' && submitting) {
+    submittingChange(false);
   }
 
   // Function for rendering an input bar
   function inputBarRender(name, confirmation, placeholder, onChange, secure) {
     return (
       <>
-        {/*View for creating a space between input components of account login page */}
+        {/*View for creating a space between input components of login page */}
         <View style={{ height: height * 0.02, width: '100%' }}></View>
         {/* Email Input Bar + Label*/}
         <Text style={styles.inputLabel}>{name}: </Text>
@@ -945,6 +2094,7 @@ function Login({ navigation }) {
       } else if (!errorCheck) {
         // If no input errors occured
         login(username, password, loginChange); // Send input data
+        submittingChange(true);
         submitChange(false);
       }
     }
@@ -952,39 +2102,45 @@ function Login({ navigation }) {
 
   return (
     <>
-      {/*View for all components on homepage*/}
-      <View style={styles.allViews}>
-        {/*Container for Account page*/}
-        <View style={styles.mainPage}>
-          {/*View for title flexbox*/}
-          <View style={styles.titleContainer}>
-            <Pressable // Pressable for back button
-              onPress={() => {
-                navigation.goBack();
-              }}
-              style={styles.backButton}>
-              <Image source={xButton} style={styles.backButtonImage} />
-            </Pressable>
+      {/*Container for Login page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.popToTop();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
             <Image source={capelliLogo} style={styles.capelliLogoImage} />
-            <Pressable // Pressable for shopping cart image
-              onPress={() => {
-                navigation.replace('CartPage');
-              }}
-              style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
-              <Image source={cart} style={styles.cartImage} />
-            </Pressable>
-            <Pressable // Pressable for account image - image is different color to show that user is currently on login page
-              onPress={() => {}}
-              style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
-              <Image source={accountSelected} style={styles.accountImage} />
-            </Pressable>
-          </View>
-          <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Login{'\n'}</Text>
-            <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-              Login to see and track your orders!
-              {'\n'}
-            </Text>
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on login page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        <View style={styles.body}>
+          <Text style={styles.cartAccountTitle}>Login{'\n'}</Text>
+          <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
+            Login to see and track your orders!
+            {'\n'}
+          </Text>
+          {/* Cannot use KeyboardAvoidingView when using android */}
+          {Platform.OS == 'ios' ? (
             <KeyboardAvoidingView // View used for moving the scrollview upward when keyboard is opened
               behavior="padding"
               keyboardVerticalOffset={height * 0.2}
@@ -1034,16 +2190,82 @@ function Login({ navigation }) {
                 </Text>
                 <Pressable // Submit button
                   style={styles.submitButton}
-                  onPress={() => submitChange(true)}>
-                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
-                    SUBMIT
-                  </Text>
+                  onPress={() => submitChange(true)}
+                  disabled={submitting}>
+                  {submitting ? (
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <ActivityIndicator size="large" color="#000000" />
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                      SUBMIT
+                    </Text>
+                  )}
                 </Pressable>
                 {/*View for creating a space between submit button and bottom of scrollview */}
                 <View style={{ height: height * 0.04, width: '100%' }}></View>
               </ScrollView>
             </KeyboardAvoidingView>
-          </View>
+          ) : (
+            <ScrollView>
+              {inputBarRender(
+                'Username',
+                false,
+                'Enter your username here',
+                usernameChange,
+                false
+              )}
+              {inputBarRender(
+                'Password',
+                false,
+                'Enter your password here',
+                passwordChange,
+                true
+              )}
+              <Pressable // Pressable for going to signup page
+                style={{ paddingVertical: 15, width: width * 0.9 }}
+                onPress={() => {
+                  navigation.navigate('SignUp');
+                }}>
+                <Text
+                  style={{
+                    fontSize: 19,
+                    fontWeight: 'bold',
+                    paddingLeft: 2,
+                    color: 'blue',
+                  }}>
+                  Press here to create an account!
+                </Text>
+              </Pressable>
+              <Text
+                style={{
+                  fontSize: 19,
+                  fontWeight: 'bold',
+                  paddingLeft: 2,
+                  color: 'red',
+                }}>
+                {inputCheck()}
+                {loginResponse == 'User not found!' ? 'User not found!' : null}
+                {'\n'}
+              </Text>
+              <Pressable // Submit button
+                style={styles.submitButton}
+                onPress={() => submitChange(true)}
+                disabled={submitting}>
+                {submitting ? (
+                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <ActivityIndicator size="large" color="#000000" />
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                    SUBMIT
+                  </Text>
+                )}
+              </Pressable>
+              {/*View for creating a space between submit button and bottom of scrollview */}
+              <View style={{ height: height * 0.04, width: '100%' }}></View>
+            </ScrollView>
+          )}
         </View>
       </View>
     </>
@@ -1168,6 +2390,7 @@ function SearchAndCategories({ navigation, route }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() => {
+              navigation.setOptions({ animation: 'slide_from_bottom' });
               navigation.navigate('ProductPage', {
                 title: title,
                 image: image,
@@ -1261,9 +2484,17 @@ function SearchAndCategories({ navigation, route }) {
               style={styles.openNavigationButton}>
               <Image source={lines} style={styles.openNavigationButtonImage} />
             </Pressable>
-            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            <Pressable // Pressable logo to return to home screen
+              style={styles.capelliLogoPressable}
+              onPress={() => {
+                navigation.setOptions({ animation: 'none' });
+                navigation.replace('Home');
+              }}>
+              <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            </Pressable>
             <Pressable // Pressable for shopping cart image
               onPress={() => {
+                navigation.setOptions({ animation: 'slide_from_bottom' });
                 navigation.navigate('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
@@ -1271,6 +2502,7 @@ function SearchAndCategories({ navigation, route }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
+                navigation.setOptions({ animation: 'slide_from_bottom' });
                 navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
@@ -1297,8 +2529,14 @@ function SearchAndCategories({ navigation, route }) {
           </View>
           {/*View for body flexbox*/}
           <View style={styles.body}>
-            {/*FlatList of product listings*/}
-            <FlatList data={productsArray} renderItem={listingsRender} />
+            {productsArray.length == 0 ? ( // Display AcitivtyIndicator while productsArray state is rendering/loading
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color="#05acbe" />
+              </View>
+            ) : (
+              // Flatlist for rendering product listings
+              <FlatList data={productsArray} renderItem={listingsRender} />
+            )}
           </View>
         </View>
       </View>
@@ -1405,6 +2643,7 @@ function Home({ navigation, route }) {
           {/*Pressable Container to make the listing a pressable to go to its product page*/}
           <Pressable
             onPress={() => {
+              navigation.setOptions({ animation: 'slide_from_bottom' });
               navigation.navigate('ProductPage', {
                 title: title,
                 image: image,
@@ -1471,7 +2710,7 @@ function Home({ navigation, route }) {
           renderItem={navigationButtonRender}
         />
       </Animated.View>
-      {/*View for all components on home page*/}
+      {/*View for all components of the page*/}
       <View
         opacity={navigationView ? 0.25 : null} // Changes opacity based on if navigation list is open
         style={styles.allViews}>
@@ -1497,9 +2736,12 @@ function Home({ navigation, route }) {
               style={styles.openNavigationButton}>
               <Image source={lines} style={styles.openNavigationButtonImage} />
             </Pressable>
-            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            <Pressable style={styles.capelliLogoPressable}>
+              <Image source={capelliLogo} style={styles.capelliLogoImage} />
+            </Pressable>
             <Pressable // Pressable for shopping cart image
               onPress={() => {
+                navigation.setOptions({ animation: 'slide_from_bottom' });
                 navigation.navigate('CartPage');
               }}
               style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
@@ -1507,6 +2749,7 @@ function Home({ navigation, route }) {
             </Pressable>
             <Pressable // Pressable for account image
               onPress={() => {
+                navigation.setOptions({ animation: 'slide_from_bottom' });
                 navigation.navigate('Account');
               }}
               style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
@@ -1534,8 +2777,14 @@ function Home({ navigation, route }) {
           </View>
           {/* View for body flexbox */}
           <View style={styles.body}>
-            {/*FlatList of banner and product listings*/}
-            <FlatList data={productsArray} renderItem={bodyPageRender} />
+            {productsArray.length == 0 ? ( // Display AcitivtyIndicator while productsArray state is rendering/loading
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color="#05acbe" />
+              </View>
+            ) : (
+              // FlatList of banner and product listings
+              <FlatList data={productsArray} renderItem={bodyPageRender} />
+            )}
           </View>
         </View>
       </View>
@@ -1571,7 +2820,7 @@ export default function App() {
         <Stack.Screen
           name="CartPage"
           component={CartPage}
-          options={{ animation: 'fade' }}
+          options={{ animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
           name="SignUp"
@@ -1586,7 +2835,22 @@ export default function App() {
         <Stack.Screen
           name="Account"
           component={Account}
-          options={{ animation: 'fade' }}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="ChooseAddress"
+          component={ChooseAddress}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="EditAddress"
+          component={EditAddress}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="AddAddress"
+          component={AddAddress}
+          options={{ animation: 'slide_from_bottom' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
@@ -1595,11 +2859,16 @@ export default function App() {
 
 // Styles for all components
 const styles = StyleSheet.create({
-  // All View FlexBox/Container
+  // All View FlexBox/Container - Used for home and SearchAndCategories page for navigation list
   allViews: {
     flexDirection: 'row',
     height: height,
     width: width,
+  },
+  // Main home page style for all components of the page
+  mainPage: {
+    flexDirection: 'column',
+    flex: 1,
   },
   // Style for creating the allView into a opaque pressable
   allViewsPressable: {
@@ -1629,11 +2898,6 @@ const styles = StyleSheet.create({
   navigationButtonText: {
     textAlign: 'center',
     fontSize: 15,
-  },
-  // Main home page style for top logo, banner, and featured listings
-  mainPage: {
-    flexDirection: 'column',
-    flex: 1,
   },
   // Title flexbox container (Logo and button for list)
   titleContainer: {
@@ -1668,10 +2932,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // Pressable
+  capelliLogoPressable: {
+    marginTop: height * -0.055,
+    width: width * 0.37,
+    height: height * 0.135,
+    alignSelf: 'center',
+  },
   // Style of capelli logo
   capelliLogoImage: {
     resizeMode: 'stretch',
-    marginTop: height * -0.055,
     width: width * 0.37,
     height: height * 0.135,
     alignSelf: 'center',
@@ -1816,6 +3086,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     borderWidth: 2,
     borderRadius: 5,
+    paddingLeft: 2,
   },
   // Quantity text input for product page listings
   productQuantityInput: {
@@ -1824,5 +3095,67 @@ const styles = StyleSheet.create({
     fontSize: 22,
     borderWidth: 2,
     borderRadius: 5,
+    paddingLeft: 2,
+  },
+  // Account setting-change pressable
+  accountChangePressable: {
+    borderWidth: 2,
+    paddingLeft: 2,
+    borderRadius: 5,
+    flexDirection: 'row',
+    paddingVertical: height * 0.02,
+    justifyContent: 'space-between',
+  },
+  // Forward arrow style for account change pressable
+  accountChangePressableArrow: {
+    width: '7.5%',
+    height: '100%',
+    resizeMode: 'stretch',
+    alignSelf: 'flex-end',
+  },
+  // Pressable for address change
+  addressChangePressable: {
+    borderWidth: 2,
+    borderRadius: 5,
+    flexDirection: 'row',
+    paddingVertical: height * 0.01,
+    paddingLeft: 2,
+    justifyContent: 'space-between',
+    alignContent: 'center',
+  },
+  // Forward arrow style for address change pressable
+  addressChangePressableArrow: {
+    width: '100%',
+    height: '50%',
+    resizeMode: 'stretch',
+    alignSelf: 'flex-end',
+    marginBottom: '7.5%',
+  },
+  // View style for Picker for address change page
+  pickerViewStyle: {
+    paddingLeft: 2,
+    height: height * 0.055,
+    flexDirection: 'column',
+    width: '25%',
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+  },
+  pickerStyle: {
+    inputIOS: {
+      fontSize: 22,
+      color: 'black',
+      borderWidth: 2,
+      borderRadius: 5,
+      height: '100%',
+      padding: 2,
+    },
+    inputAndroid: {
+      fontSize: 22,
+      borderWidth: 2,
+      color: 'black',
+      borderRadius: 5,
+      height: '100%',
+      padding: 2,
+    },
   },
 });
