@@ -200,6 +200,26 @@ async function changeAddress(
   addressesDoneChange(true);
 }
 
+// Function for deleting an address of a user
+async function deleteAddress(username, index, addressDeleted) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/deleteAddress',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+        index: index,
+      }),
+    }
+  );
+  const json = await response.json();
+  addressDeleted(true);
+}
+
 // Function for adding a new address to the user's account
 async function addAddress(
   username,
@@ -286,6 +306,51 @@ async function deleteProduct(username, productTitle) {
     }
   );
   const json = await response.json();
+}
+
+// Function for getting email of current user
+async function getEmail(username, emailLoadedChange) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/getEmail',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    }
+  );
+  const json = await response.json();
+  emailLoadedChange(json['response']);
+}
+
+// Function for getting email of current user
+async function changeCredential(
+  currentUser,
+  selected,
+  newCredential,
+  editResponseChange
+) {
+  const response = await fetch(
+    'https://adrielcapelli.pythonanywhere.com/changeCredential',
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        currentUser: currentUser,
+        selected: selected,
+        newCredential: newCredential,
+      }),
+    }
+  );
+  const json = await response.json();
+  editResponseChange(json['response']);
 }
 
 // Product Page
@@ -407,7 +472,7 @@ function ProductPage({ navigation, route }) {
                       ) : (
                         <View style={{ flex: 1, justifyContent: 'center' }}>
                           {/* Acitivty indicator while the cart response or cart creation is loading */}
-                          <ActivityIndicator size="large" color="#05acbe" />
+                          <ActivityIndicator size="large" color="#000000" />
                         </View>
                       )
                     ) : (
@@ -477,7 +542,7 @@ function ProductPage({ navigation, route }) {
                     ) : (
                       <View style={{ flex: 1, justifyContent: 'center' }}>
                         {/* Acitivty indicator while the cart response or cart creation is loading */}
-                        <ActivityIndicator size="large" color="#05acbe" />
+                        <ActivityIndicator size="large" color="#000000" />
                       </View>
                     )
                   ) : (
@@ -702,8 +767,19 @@ function CartPage({ navigation, route }) {
                 </>
               ) : cartResponse.length > 0 ? (
                 cart.length > 0 ? (
-                  //FlatList of product listings in user's cart once cart has loaded
-                  <FlatList data={cart} renderItem={listingsRender} />
+                  <ScrollView>
+                    {/* FlatList of product listings in user's cart once cart has loaded */}
+                    <FlatList data={cart} renderItem={listingsRender} />
+                    <Pressable // Checkout button
+                      style={styles.submitButton}
+                      onPress={() => {
+                        navigation.replace('Checkout');
+                      }}>
+                      <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                        Checkout
+                      </Text>
+                    </Pressable>
+                  </ScrollView>
                 ) : (
                   <Text
                     style={{
@@ -745,8 +821,19 @@ function CartPage({ navigation, route }) {
             </>
           ) : cartResponse.length > 0 ? (
             cart.length > 0 ? (
-              //FlatList of product listings in user's cart once cart has loaded
-              <FlatList data={cart} renderItem={listingsRender} />
+              <ScrollView>
+                {/* FlatList of product listings in user's cart once cart has loaded */}
+                <FlatList data={cart} renderItem={listingsRender} />
+                <Pressable // Checkout button
+                  style={styles.submitButton}
+                  onPress={() => {
+                    navigation.replace('Checkout');
+                  }}>
+                  <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                    Checkout
+                  </Text>
+                </Pressable>
+              </ScrollView>
             ) : (
               <Text
                 style={{
@@ -1105,10 +1192,10 @@ function EditAddress({ navigation, route }) {
 
 // Add Address page
 function AddAddress({ navigation, route }) {
-  const [addressOne, addressOneChange] = useState(); // State that holds the 1st address line of the editing address
-  const [addressTwo, addressTwoChange] = useState(); // State that holds the 2nd address line of the editing address
+  const [addressOne, addressOneChange] = useState(''); // State that holds the 1st address line of the editing address
+  const [addressTwo, addressTwoChange] = useState(''); // State that holds the 2nd address line of the editing address
   const [state, stateChange] = useState('AL'); // State that holds the state of the editing address
-  const [zipCode, zipCodeChange] = useState(); // State that holds the zip code of the editing address
+  const [zipCode, zipCodeChange] = useState(''); // State that holds the zip code of the editing address
   const [addressesDone, addressesDoneChange] = useState(false); // State that checks if changing address is completed
   const [savePressed, savePressedChange] = useState(false); // State that checks if user presses save button
 
@@ -1433,16 +1520,17 @@ function AddAddress({ navigation, route }) {
   );
 }
 
-// Choose Address to Edit Page
-function ChooseAddress({ navigation }) {
+// Select Address Page
+function SelectAddress({ navigation }) {
   const [currentUser, currentUserChange] = useState(''); // State for holding the current user
   const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
   const [addressResponse, addressResponseChange] = useState(''); // State for holding response from getAddresses async function
   const [addresses, addressesChange] = useState([]); // State for storing the addresses of the user in an array
   const [addressesLoaded, addressesLoadedChange] = useState(false); // State for checking if addresses have finished loading
+  const [addressDeleted, addressDeletedChange] = useState(false); // State for checking if address has finished deleting
 
   useEffect(() => {
-    // useEffect used to only get the currentUser, if it exists
+    // useEffect used to get currentUser, and add function when page is focused
     getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
     navigation.addListener('focus', () => {
       // Called whenever this page is focused, to reload/reset all states to reload addresses to get accurate/up-to-date locations
@@ -1464,7 +1552,7 @@ function ChooseAddress({ navigation }) {
   // Load response from getAddresses call into addresses state
   if (
     !addressesLoaded &&
-    addressResponse != 'No Address' &&
+    addressResponse != 'No Addresses' &&
     addressResponse.length != 0
   ) {
     for (let i = 0; i < addressResponse.length; i++) {
@@ -1477,6 +1565,15 @@ function ChooseAddress({ navigation }) {
       addresses.push(addressesDictRow);
     }
     addressesLoadedChange(true); // Change to true to render pressables
+  }
+
+  // If an address has been deleted - reset states to reload addresses to be accurate
+  if (addressDeleted) {
+    userLoadingChange(true);
+    addressesLoadedChange(false);
+    addressesChange([]);
+    addressResponseChange('');
+    addressDeletedChange(false);
   }
 
   // Function for creating rendering addresses
@@ -1495,18 +1592,36 @@ function ChooseAddress({ navigation }) {
               index: index,
             });
           }}>
-          <Text numberOfLines={4} style={{ fontSize: 19, fontWeight: 'bold' }}>
-            {addresses[index]['Address1']}
-            {'\n'}
-            {addresses[index]['Address2']}
-            {'\n'}
-            {addresses[index]['State']} {addresses[index]['zipCode']}
-          </Text>
+          <View style={{ flexDirection: 'column', flex: 4.5 }}>
+            <Text
+              numberOfLines={3}
+              style={{ fontSize: 19, fontWeight: 'bold' }}>
+              {addresses[index]['Address1']}
+              {'\n'}
+              {addresses[index]['Address2']}
+              {'\n'}
+              {addresses[index]['State']} {addresses[index]['zipCode']}
+            </Text>
+            <Pressable // Pressable for deleting product from user's cart
+              style={{ paddingVertical: 5, maxWidth: '65%' }}
+              onPress={() => {
+                deleteAddress(currentUser, index, addressDeletedChange);
+              }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: 'bold',
+                  color: '#05acbe',
+                }}>
+                Remove Address
+              </Text>
+            </Pressable>
+          </View>
           <View
             style={{
               flexDirection: 'column',
+              flex: 0.5,
               justifyContent: 'center',
-              width: '7.5%',
             }}>
             <Image
               source={forwardArrow}
@@ -1562,28 +1677,385 @@ function ChooseAddress({ navigation }) {
             <Image source={accountSelected} style={styles.accountImage} />
           </Pressable>
         </View>
-        {!addressesLoaded ? ( // Show activity indicator while addresses are loading
+        {!addressesLoaded && addressResponse != 'No Addresses' ? ( // Show activity indicator while addresses are loading
           <View style={{ flex: 1, justifyContent: 'center' }}>
             <ActivityIndicator size="large" color="#05acbe" />
           </View>
         ) : (
           // If user does exist or is logged in - render the regular account page
           <View style={styles.body}>
-            <Text style={styles.cartAccountTitle}>Choose Address{'\n'}</Text>
+            <Text style={styles.cartAccountTitle}>Addresses{'\n'}</Text>
             <ScrollView>
-              {addressesLoaded ? renderAddressesCall() : null}
-              {/*View for creating a space between address pressables and submit button*/}
-                <View style={{ height: height * 0.02, width: '100%' }}></View>
-                <Pressable // New Address button
-                  style={styles.submitButton}
-                  onPress={() => {navigation.navigate('AddAddress');
+              {addressResponse != 'No Addresses' ? (
+                renderAddressesCall()
+              ) : (
+                <Text
+                  style={{
+                    fontSize: 21,
+                    fontWeight: 'bold',
+                    paddingLeft: 2,
                   }}>
-                    <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
-                      NEW ADDRESS
-                    </Text>
-                </Pressable>
-                {/*View for creating a space between button and bottom of scrollview */}
-                <View style={{ height: height * 0.04, width: '100%' }}></View>
+                  {'\n'}
+                  No Addresses
+                  {'\n'}
+                </Text>
+              )}
+              {/*View for creating a space between address pressables and submit button*/}
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Pressable // New Address button
+                style={[styles.submitButton, { width: '50%' }]}
+                onPress={() => {
+                  navigation.navigate('AddAddress', { user: currentUser });
+                }}>
+                <Text style={{ fontSize: 21, fontWeight: 'bold' }}>
+                  NEW ADDRESS
+                </Text>
+              </Pressable>
+              {/*View for creating a space between button and bottom of scrollview */}
+              <View style={{ height: height * 0.04, width: '100%' }}></View>
+            </ScrollView>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
+
+// Edit Credential Page
+function EditCredential({ navigation, route }) {
+  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
+  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+  const [currentEmail, currentEmailChange] = useState(''); // State for holding the current email of the user
+  const [newUsername, newUsernameChange] = useState(''); // State for holding the new username for the user
+  const [newEmail, newEmailChange] = useState(''); // State for holding the new email for the user
+  const [confirmEmail, confirmEmailChange] = useState(''); // State for holding the confirm email for the user
+  const [newPassword, newPasswordChange] = useState(''); // State for holding the new password for the user
+  const [confirmPassword, confirmPasswordChange] = useState(''); // State for holding the confirm password for the user
+  const [editResponse, editResponseChange] = useState(''); // State for holding the response from the change async function
+  const [error, errorChange] = useState(''); // State for holding an error when entering new credential
+  const [submitPressed, submitPressedChange] = useState(false); // Checks if the user pressed the submit button
+  const [saving, savingChange] = useState(false); // State for showing the activit indicator while credential is saving
+
+  useEffect(() => {
+    // useEffect used to only get the currentUser, if it exists
+    getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
+  }, []);
+
+  if (userLoading) {
+    if (route.params.selected == 'Email') {
+      getEmail(currentUser, currentEmailChange);
+    }
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded
+  }
+
+  if (saving && editResponse.length != 0) {
+    if (editResponse != 'Credential changed!') {
+      savingChange(false);
+    } else if (editResponse == 'Credential changed!') {
+      if (route.params.selected == 'Username') {
+        storeUser(newUsername);
+        navigation.goBack();
+      } else if (route.params.selected == 'Email') {
+        navigation.goBack();
+      } else if (route.params.selected == 'Password') {
+        navigation.goBack();
+      }
+    }
+  }
+
+  // Input Error Checking
+  if (submitPressed && currentUser.length != 0) {
+    // Username input checking
+    if (route.params.selected == 'Username') {
+      if (newUsername.length == 0) {
+        errorChange('No Username provided!');
+      } else {
+        errorChange('');
+        changeCredential(
+          currentUser,
+          route.params.selected,
+          newUsername,
+          editResponseChange
+        );
+        savingChange(true);
+      }
+    }
+    // Email input checking
+    else if (route.params.selected == 'Email') {
+      if (newEmail.length == 0) {
+        errorChange('No Email provided!');
+      } else if (newEmail != confirmEmail) {
+        errorChange('Emails do not match!');
+      } else {
+        errorChange('');
+        changeCredential(
+          currentUser,
+          route.params.selected,
+          newEmail,
+          editResponseChange
+        );
+        savingChange(true);
+      }
+    }
+    // Password input checking
+    else if (route.params.selected == 'Password') {
+      if (newPassword.length == 0) {
+        errorChange('No Password provided!');
+      } else if (newPassword != confirmPassword) {
+        errorChange('Passwords do not match!');
+      } else {
+        errorChange('');
+        changeCredential(
+          currentUser,
+          route.params.selected,
+          newPassword,
+          editResponseChange
+        );
+        savingChange(true);
+      }
+    }
+    submitPressedChange(false);
+  }
+
+  return (
+    <>
+      {/*Container for Account page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on account page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        <View style={styles.body}>
+          <Text style={styles.cartAccountTitle}>
+            Change {route.params.selected}
+            {'\n'}
+          </Text>
+          <Text
+            style={{
+              fontSize: 21,
+              fontWeight: 'bold',
+              paddingLeft: 2,
+            }}>
+            {currentUser.length != 0
+              ? route.params.selected == 'Username'
+                ? '\nCurrent Username : ' + currentUser
+                : route.params.selected == 'Email'
+                ? '\nCurrent Email: ' +
+                  (currentEmail.length != 0 ? currentEmail : 'Loading...')
+                : null
+              : 'Loading...'}
+            {'\n'}
+          </Text>
+          {/* Username Render */}
+          {route.params.selected == 'Username' ? (
+            <>
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Text style={styles.inputLabel}>New Username: </Text>
+              <TextInput
+                style={styles.inputBar}
+                onChangeText={newUsernameChange}
+                placeholder={'Maximum 15 Characters'}
+                clearButtonMode="while-editing"
+                maxLength={15}
+                returnKeyType="done"
+              />
+            </>
+          ) : null}
+          {/* Email Render */}
+          {route.params.selected == 'Email' ? (
+            <>
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Text style={styles.inputLabel}>New Email: </Text>
+              <TextInput
+                style={styles.inputBar}
+                onChangeText={newEmailChange}
+                placeholder={'Enter email here'}
+                clearButtonMode="while-editing"
+                returnKeyType="done"
+              />
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Text style={styles.inputLabel}>Confirm New Email: </Text>
+              <TextInput
+                style={styles.inputBar}
+                onChangeText={confirmEmailChange}
+                placeholder={'Confirm email here'}
+                clearButtonMode="while-editing"
+                returnKeyType="done"
+              />
+            </>
+          ) : null}
+          {/* Password Render */}
+          {route.params.selected == 'Password' ? (
+            <>
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Text style={styles.inputLabel}>New Password: </Text>
+              <TextInput
+                style={styles.inputBar}
+                onChangeText={newPasswordChange}
+                secure={true}
+                placeholder={'Enter Password here'}
+                clearButtonMode="while-editing"
+                returnKeyType="done"
+              />
+              <View style={{ height: height * 0.02, width: '100%' }}></View>
+              <Text style={styles.inputLabel}>Confirm New Password: </Text>
+              <TextInput
+                style={styles.inputBar}
+                onChangeText={confirmPasswordChange}
+                secure={true}
+                placeholder={'Confirm Password here'}
+                clearButtonMode="while-editing"
+                returnKeyType="done"
+              />
+            </>
+          ) : null}
+          <Text
+            style={{
+              fontSize: 19,
+              fontWeight: 'bold',
+              paddingLeft: 2,
+              color: 'red',
+            }}>
+            {'\n'}
+            {error}
+            {'\n'}
+          </Text>
+          <Text
+            style={{
+              fontSize: 19,
+              fontWeight: 'bold',
+              paddingLeft: 2,
+            }}>
+            {editResponse}
+            {'\n'}
+          </Text>
+          <Pressable // Save button
+            disabled={submitPressed || saving}
+            style={styles.submitButton}
+            onPress={() => {
+              submitPressedChange(true);
+            }}>
+            {submitPressed || saving ? (
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color="#000000" />
+              </View>
+            ) : (
+              <Text style={{ fontSize: 21, fontWeight: 'bold' }}>SAVE</Text>
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </>
+  );
+}
+
+// Select Credential Page
+function SelectCredential({ navigation }) {
+  const [currentUser, currentUserChange] = useState(''); // State for holding the current user
+  const [userLoading, userLoadingChange] = useState(false); // State for checking if current user async function has finished
+
+  useEffect(() => {
+    // useEffect used to only get the currentUser, if it exists
+    getUser(currentUserChange, userLoadingChange); // Called to get the current user that's logged in, if any user is logged in at all
+  }, []);
+
+  if (userLoading) {
+    userLoadingChange(false); // Changing userLoading back to false after currentUser has loaded
+  }
+
+  // Function for creating a credential-select Pressable for scrollview
+  function credentialSelectPressable(text, onpress) {
+    return (
+      <>
+        <Pressable style={styles.accountChangePressable} onPress={onpress}>
+          <Text style={{ fontSize: 21, fontWeight: 'bold' }}>{text}</Text>
+          <Image
+            source={forwardArrow}
+            style={styles.accountChangePressableArrow}
+          />
+        </Pressable>
+        {/*View for creating a space between scrollview pressables */}
+        <View style={{ height: height * 0.02, width: '100%' }}></View>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/*Container for Account page*/}
+      <View style={styles.mainPage}>
+        {/*View for title flexbox*/}
+        <View style={styles.titleContainer}>
+          <Pressable // Pressable for back button
+            onPress={() => {
+              navigation.goBack();
+            }}
+            style={styles.backButton}>
+            <Image source={xButton} style={styles.backButtonImage} />
+          </Pressable>
+          <Pressable // Pressable logo to return to home screen
+            style={styles.capelliLogoPressable}
+            onPress={() => {
+              navigation.replace('Home');
+            }}>
+            <Image source={capelliLogo} style={styles.capelliLogoImage} />
+          </Pressable>
+          <Pressable // Pressable for shopping cart image
+            onPress={() => {
+              navigation.replace('CartPage');
+            }}
+            style={[styles.cartPressable, { marginTop: height * -0.14 }]}>
+            <Image source={cart} style={styles.cartImage} />
+          </Pressable>
+          <Pressable // Pressable for account image - image is different color to show that user is currently on account page
+            onPress={() => {}}
+            style={[styles.accountPressable, { marginTop: height * -0.06 }]}>
+            <Image source={accountSelected} style={styles.accountImage} />
+          </Pressable>
+        </View>
+        {currentUser == null || currentUser == '' ? ( // Show activity indicator while user is loading
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color="#05acbe" />
+          </View>
+        ) : (
+          // If user does exist or is logged in - render the regular account page
+          <View style={styles.body}>
+            <Text style={styles.cartAccountTitle}>Select Credential{'\n'}</Text>
+            <ScrollView>
+              {credentialSelectPressable('Edit Email', function () {
+                navigation.navigate('EditCredential', { selected: 'Email' });
+              })}
+              {credentialSelectPressable('Edit Username', function () {
+                navigation.navigate('EditCredential', { selected: 'Username' });
+              })}
+              {credentialSelectPressable('Edit Password', function () {
+                navigation.navigate('EditCredential', { selected: 'Password' });
+              })}
             </ScrollView>
           </View>
         )}
@@ -1668,13 +2140,12 @@ function Account({ navigation, route }) {
           // If user does exist or is logged in - render the regular account page
           <View style={styles.body}>
             <Text style={styles.cartAccountTitle}>Account{'\n'}</Text>
-            <Text style={{ fontSize: 21, fontWeight: 'bold', paddingLeft: 2 }}>
-              Current User: {currentUser}
-              {'\n'}
-            </Text>
             <ScrollView>
               {settingChangePressable('Edit Addresses', function () {
-                navigation.navigate('ChooseAddress');
+                navigation.navigate('SelectAddress');
+              })}
+              {settingChangePressable('Edit Credentials', function () {
+                navigation.navigate('SelectCredential');
               })}
               <Pressable // Logout button
                 style={styles.submitButton}
@@ -2048,6 +2519,7 @@ function Login({ navigation, route }) {
     navigation.replace('Account'); // Navigate to Account page
   }
 
+  // If user is not found - change submitting to false to stop the loading indicator on button
   if (loginResponse == 'User not found!' && submitting) {
     submittingChange(false);
   }
@@ -2092,6 +2564,7 @@ function Login({ navigation, route }) {
         errorChange(false); // Change to false (as the user has now fixed all input errors by this point)
         submitChange(false); // Change submit to false to make user have to press submit again - code will run inputCheck() again, but now the data will send since all input data is correct
       } else if (!errorCheck) {
+        loginChange(''); // Clear previous response
         // If no input errors occured
         login(username, password, loginChange); // Send input data
         submittingChange(true);
@@ -2838,8 +3311,18 @@ export default function App() {
           options={{ animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
-          name="ChooseAddress"
-          component={ChooseAddress}
+          name="SelectAddress"
+          component={SelectAddress}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="SelectCredential"
+          component={SelectCredential}
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="EditCredential"
+          component={EditCredential}
           options={{ animation: 'slide_from_bottom' }}
         />
         <Stack.Screen
